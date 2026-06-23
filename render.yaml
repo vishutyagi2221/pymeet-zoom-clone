@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: pymeet
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pymeet-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: FRONTEND_ORIGIN
+        value: https://pymeet.onrender.com
+
+databases:
+  - name: pymeet-db
+    plan: free
+    databaseName: pymeet
+    user: pymeet
+    postgresMajorVersion: "16"
