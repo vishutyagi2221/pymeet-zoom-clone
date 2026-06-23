@@ -27,7 +27,12 @@ export function MeetingRoom() {
   const [waiting, setWaiting] = useState(false);
   const [waitingParticipants, setWaitingParticipants] = useState<RoomParticipant[]>([]);
   const [exitMessage, setExitMessage] = useState("");
-  const { localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, videoDevices, selectedVideoDeviceId, requestMedia, selectVideoDevice, toggleMic, toggleCamera, shareScreen, leave } = useWebRTC(socket, meetingId, Boolean(meeting?.is_active && !exitMessage));
+  const { localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, 
+    videoDevices, audioInputDevices, audioOutputDevices, 
+    selectedVideoDeviceId, selectedAudioInputId, selectedAudioOutputId, newDeviceConnected,
+    requestMedia, selectVideoDevice, selectAudioInputDevice, selectAudioOutputDevice, clearNewDeviceToast,
+    toggleMic, toggleCamera, shareScreen, leave 
+  } = useWebRTC(socket, meetingId, Boolean(meeting?.is_active && !exitMessage));
 
   useEffect(() => {
     meetingApi.get(meetingId).then(({ data }) => {
@@ -67,6 +72,16 @@ export function MeetingRoom() {
     );
   };
 
+  const handleShiftDevice = () => {
+    if (!newDeviceConnected) return;
+    if (newDeviceConnected.kind === "audioinput") {
+      void selectAudioInputDevice(newDeviceConnected.deviceId);
+    } else if (newDeviceConnected.kind === "audiooutput") {
+      selectAudioOutputDevice(newDeviceConnected.deviceId);
+    }
+    clearNewDeviceToast();
+  };
+
   if (isLoading) return <div className="grid min-h-screen place-items-center bg-[#050914]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" /></div>;
 
   if (exitMessage) return (
@@ -86,11 +101,16 @@ export function MeetingRoom() {
       <header className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between border-b border-line bg-slate-950/70 px-4 py-3 backdrop-blur-xl">
         <div><h1 className="font-semibold">{meeting?.title || "PyMeet Meeting"}</h1><p className="text-xs text-slate-400">{meetingId}</p></div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setCameraSettingsOpen(true)} className="grid h-10 w-10 place-items-center rounded-lg border border-line bg-white/5 text-slate-200 hover:bg-white/10" title="Choose camera" aria-label="Choose camera"><Settings2 size={17} /></button>
+          <button onClick={() => setCameraSettingsOpen(true)} className="grid h-10 w-10 place-items-center rounded-lg border border-line bg-white/5 text-slate-200 hover:bg-white/10" title="Device Settings" aria-label="Device Settings"><Settings2 size={17} /></button>
           <button onClick={() => navigator.clipboard.writeText(meetingId)} className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-slate-200 hover:bg-white/10"><Copy size={16} /> Copy ID</button>
         </div>
       </header>
-      <section className="fixed inset-0 flex h-full w-full items-center justify-center p-4"><VideoGrid localStream={localStream} localUser={localParticipant} remoteStreams={remoteStreams} cameraEnabled={cameraEnabled} screenSharing={screenSharing} /></section>
+      
+      <section className="fixed inset-0 flex h-full w-full items-center justify-center p-4">
+        <VideoGrid localStream={localStream} localUser={localParticipant} remoteStreams={remoteStreams} cameraEnabled={cameraEnabled} screenSharing={screenSharing} audioOutputDeviceId={selectedAudioOutputId} />
+      </section>
+      
+      {/* Media Error Toast */}
       {mediaError && (
         <div className="fixed left-1/2 top-24 z-30 flex w-[min(92vw,620px)] -translate-x-1/2 items-center gap-3 rounded-lg border border-amber-400/40 bg-slate-950/95 p-4 shadow-soft backdrop-blur-xl">
           <Camera className="shrink-0 text-amber-300" size={22} />
@@ -98,17 +118,54 @@ export function MeetingRoom() {
           <button onClick={() => void requestMedia()} className="shrink-0 rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">Try again</button>
         </div>
       )}
+
+      {/* New Device Connected Toast */}
+      {newDeviceConnected && (
+        <div className="fixed left-1/2 top-24 z-30 flex w-[min(92vw,500px)] -translate-x-1/2 items-center justify-between gap-3 rounded-lg border border-cyan-400/40 bg-slate-950/95 p-3 shadow-soft backdrop-blur-xl animate-in fade-in slide-in-from-top-10">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-cyan-400">New Audio Device Detected</p>
+            <p className="truncate text-sm text-white">{newDeviceConnected.label || "Bluetooth / Headset Device"}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button onClick={clearNewDeviceToast} className="text-xs text-slate-400 hover:text-white px-2 py-1">Dismiss</button>
+            <button onClick={handleShiftDevice} className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-400">Shift to this device</button>
+          </div>
+        </div>
+      )}
+
       <MeetingAssistant socket={socket} participants={participants} waitingParticipants={waitingParticipants} isHost={localParticipant?.is_host ?? false} screenSharing={screenSharing} />
       <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onLeave={exit} />
-      <Modal open={cameraSettingsOpen} title="Choose camera" onClose={() => setCameraSettingsOpen(false)}>
-        <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor="camera-device">Camera</label>
-        <select id="camera-device" value={selectedVideoDeviceId} onChange={(event) => void selectVideoDevice(event.target.value)} disabled={screenSharing} className="w-full rounded-lg border border-line bg-slate-900 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400 disabled:opacity-50">
-          {videoDevices.map((device, index) => (
-            <option key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${index + 1}`}</option>
-          ))}
-        </select>
-        {screenSharing && <p className="mt-3 text-sm text-amber-300">Stop screen sharing before changing the camera.</p>}
-      </Modal>      <ChatPanel open={chatOpen} socket={socket} localUser={localParticipant} onClose={() => setChatOpen(false)} />
+      
+      <Modal open={cameraSettingsOpen} title="Device Settings" onClose={() => setCameraSettingsOpen(false)}>
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-200" htmlFor="camera-device">Camera</label>
+            <select id="camera-device" value={selectedVideoDeviceId} onChange={(event) => void selectVideoDevice(event.target.value)} disabled={screenSharing} className="w-full rounded-lg border border-line bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400 disabled:opacity-50">
+              {videoDevices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${index + 1}`}</option>)}
+            </select>
+            {screenSharing && <p className="mt-1 text-xs text-amber-300">Stop screen sharing before changing the camera.</p>}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-200" htmlFor="mic-device">Microphone</label>
+            <select id="mic-device" value={selectedAudioInputId} onChange={(event) => void selectAudioInputDevice(event.target.value)} className="w-full rounded-lg border border-line bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400">
+              {audioInputDevices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Microphone ${index + 1}`}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-200" htmlFor="speaker-device">Speaker</label>
+            <select id="speaker-device" value={selectedAudioOutputId} onChange={(event) => selectAudioOutputDevice(event.target.value)} className="w-full rounded-lg border border-line bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400">
+              {audioOutputDevices.length > 0 ? (
+                audioOutputDevices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Speaker ${index + 1}`}</option>)
+              ) : (
+                <option value="">Default System Speaker (Cannot be changed on Firefox)</option>
+              )}
+            </select>
+          </div>
+        </div>
+      </Modal>      
+      <ChatPanel open={chatOpen} socket={socket} localUser={localParticipant} onClose={() => setChatOpen(false)} />
       <ParticipantPanel open={participantsOpen} participants={participants} waitingParticipants={waitingParticipants} socket={socket} meetingId={meetingId} currentSid={socket?.id} onClose={() => setParticipantsOpen(false)} />
     </main>
   );

@@ -26,6 +26,8 @@ const shouldInitiate = (localSid: string | undefined, remoteSid: string) => Bool
 const VIRTUAL_CAMERA_PATTERN = /phone|mobile|virtual|phone link|link to windows|continuity|droidcam|iriun|obs/i;
 const PHYSICAL_CAMERA_PATTERN = /integrated|webcam|usb|hd camera|facetime/i;
 const CAMERA_STORAGE_KEY = "pymeet-camera-device-id";
+const MIC_STORAGE_KEY = "pymeet-mic-device-id";
+const SPEAKER_STORAGE_KEY = "pymeet-speaker-device-id";
 
 async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boolean> {
   try {
@@ -55,15 +57,62 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  
   const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState("");
+  const [selectedAudioInputId, setSelectedAudioInputId] = useState("");
+  const [selectedAudioOutputId, setSelectedAudioOutputId] = useState("");
+  const [newDeviceConnected, setNewDeviceConnected] = useState<MediaDeviceInfo | null>(null);
+
   const peers = useRef<Map<string, RTCPeerConnection>>(new Map());
   const participantsRef = useRef<RoomParticipant[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const audioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const previousDevicesRef = useRef<MediaDeviceInfo[]>([]);
   const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const disconnectTimers = useRef<Map<string, number>>(new Map());
   const restartAttempts = useRef<Map<string, number>>(new Map());
+
+  const updateDeviceList = useCallback(async (isInitial = false) => {
+    if (!navigator.mediaDevices?.enumerateDevices) return null;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const video = devices.filter((d) => d.kind === "videoinput");
+      const audioIn = devices.filter((d) => d.kind === "audioinput");
+      const audioOut = devices.filter((d) => d.kind === "audiooutput");
+
+      setVideoDevices(video);
+      setAudioInputDevices(audioIn);
+      setAudioOutputDevices(audioOut);
+
+      if (!isInitial) {
+        const prevIds = new Set(previousDevicesRef.current.map((d) => d.deviceId));
+        const newDevice = devices.find((d) => 
+          !prevIds.has(d.deviceId) && 
+          d.deviceId && 
+          d.deviceId !== "default" && 
+          d.deviceId !== "communications" && 
+          (d.kind === "audioinput" || d.kind === "audiooutput")
+        );
+        if (newDevice) {
+          setNewDeviceConnected(newDevice);
+          setTimeout(() => setNewDeviceConnected(null), 8000);
+        }
+      }
+      previousDevicesRef.current = devices;
+      return { video, audioIn, audioOut };
+    } catch { return null; }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => void updateDeviceList();
+    navigator.mediaDevices?.addEventListener("devicechange", handler);
+    return () => navigator.mediaDevices?.removeEventListener("devicechange", handler);
+  }, [updateDeviceList]);
 
   const requestMedia = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -75,9 +124,18 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
 
     try {
       const video = await preferredCameraConstraints();
-      let stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
-      const availableCameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "videoinput");
-      setVideoDevices(availableCameras);
+      const savedMicId = window.localStorage.getItem(MIC_STORAGE_KEY);
+      const audioConstraints = savedMicId ? { deviceId: { exact: savedMicId } } : true;
+      
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video, audio: audioConstraints });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
+      }
+
+      const deviceLists = await updateDeviceList(true);
+      const availableCameras = deviceLists?.video || [];
 
       const currentTrack = stream.getVideoTracks()[0];
       const physicalCamera = availableCameras.find((device) =>
@@ -99,7 +157,12 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
       localStreamRef.current = stream;
       cameraTrackRef.current = stream.getVideoTracks()[0] || null;
+      audioTrackRef.current = stream.getAudioTracks()[0] || null;
+      
       setSelectedVideoDeviceId(cameraTrackRef.current?.getSettings().deviceId || "");
+      setSelectedAudioInputId(audioTrackRef.current?.getSettings().deviceId || savedMicId || "");
+      setSelectedAudioOutputId(window.localStorage.getItem(SPEAKER_STORAGE_KEY) || "");
+      
       setLocalStream(stream);
       setMicEnabled(stream.getAudioTracks().some((track) => track.enabled));
       setCameraEnabled(stream.getVideoTracks().some((track) => track.enabled));
@@ -335,6 +398,49 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       setMediaError("The selected camera could not be opened. Close other camera apps and try again.");
     }
   }, [screenSharing]);
+
+  const selectAudioInputDevice = useCallback(async (deviceId: string) => {
+    if (!deviceId) return;
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: deviceId } },
+        video: false,
+      });
+      const nextTrack = micStream.getAudioTracks()[0];
+      const previousTrack = audioTrackRef.current;
+
+      if (nextTrack) {
+        peers.current.forEach((peer) => {
+          const sender = peer.getSenders().find((item) => item.track?.kind === "audio");
+          if (sender) void sender.replaceTrack(nextTrack);
+        });
+
+        if (localStreamRef.current) {
+          if (previousTrack) localStreamRef.current.removeTrack(previousTrack);
+          localStreamRef.current.addTrack(nextTrack);
+        }
+
+        audioTrackRef.current = nextTrack;
+        setSelectedAudioInputId(deviceId);
+        window.localStorage.setItem(MIC_STORAGE_KEY, deviceId);
+        
+        // Match the mute state
+        nextTrack.enabled = micEnabled;
+
+        if (previousTrack && previousTrack !== nextTrack) previousTrack.stop();
+      }
+    } catch {
+      setMediaError("Could not connect to the selected microphone.");
+    }
+  }, [micEnabled]);
+
+  const selectAudioOutputDevice = useCallback((deviceId: string) => {
+    setSelectedAudioOutputId(deviceId);
+    window.localStorage.setItem(SPEAKER_STORAGE_KEY, deviceId);
+  }, []);
+
+  const clearNewDeviceToast = useCallback(() => setNewDeviceConnected(null), []);
+
   const toggleMic = () => {
     if (!localStreamRef.current) { void requestMedia(); return; }
     localStreamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !track.enabled; setMicEnabled(track.enabled); });
@@ -452,7 +558,13 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     setRemoteStreams([]);
   }, [meetingId, socket]);
 
-  return { localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, videoDevices, selectedVideoDeviceId, requestMedia, selectVideoDevice, toggleMic, toggleCamera, shareScreen, leave };
+  return { 
+    localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, 
+    videoDevices, audioInputDevices, audioOutputDevices, 
+    selectedVideoDeviceId, selectedAudioInputId, selectedAudioOutputId, newDeviceConnected,
+    requestMedia, selectVideoDevice, selectAudioInputDevice, selectAudioOutputDevice, clearNewDeviceToast,
+    toggleMic, toggleCamera, shareScreen, leave 
+  };
 }
 
 

@@ -10,9 +10,10 @@ interface VideoTileProps {
   cameraEnabled?: boolean;
   active?: boolean;
   screen?: boolean;
+  audioOutputDeviceId?: string;
 }
 
-export const VideoTile = memo(function VideoTile({ stream, participant, isLocal = false, muted = false, cameraEnabled = true, active = false, screen = false }: VideoTileProps) {
+export const VideoTile = memo(function VideoTile({ stream, participant, isLocal = false, muted = false, cameraEnabled = true, active = false, screen = false, audioOutputDeviceId }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -26,7 +27,6 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
       video.srcObject = null;
     }
 
-    // Listen for track changes (e.g. replaceTrack doesn't change stream ref)
     const handleTrackChange = () => {
       if (video.srcObject !== stream) {
         video.srcObject = stream;
@@ -42,6 +42,16 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
       stream?.removeEventListener("removetrack", handleTrackChange);
     };
   }, [stream]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !audioOutputDeviceId || typeof (video as any).setSinkId !== "function") return;
+    
+    // setSinkId routes the audio to the selected speaker
+    (video as any).setSinkId(audioOutputDeviceId).catch((err: any) => {
+      console.warn("Error setting audio output device:", err);
+    });
+  }, [audioOutputDeviceId]);
 
   const hasVideo = stream && stream.getVideoTracks().some((t) => t.enabled && t.readyState === "live");
   const showVideo = cameraEnabled && (isLocal ? hasVideo : Boolean(stream));

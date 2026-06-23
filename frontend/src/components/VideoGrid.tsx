@@ -8,9 +8,10 @@ interface VideoGridProps {
   remoteStreams: Array<{ sid: string; stream: MediaStream; participant?: RoomParticipant }>;
   cameraEnabled: boolean;
   screenSharing: boolean;
+  audioOutputDeviceId?: string;
 }
 
-export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remoteStreams, cameraEnabled, screenSharing }: VideoGridProps) {
+export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remoteStreams, cameraEnabled, screenSharing, audioOutputDeviceId }: VideoGridProps) {
   const total = remoteStreams.length + 1;
 
   // Zoom-like grid columns based on participant count
@@ -49,6 +50,7 @@ export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remot
           stream={item.stream}
           participant={item.participant}
           active={false}
+          audioOutputDeviceId={audioOutputDeviceId}
         />
       ))}
     </div>
