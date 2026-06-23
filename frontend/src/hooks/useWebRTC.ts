@@ -45,6 +45,7 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
         width: { ideal: 3840 }, 
         height: { ideal: 2160 },
         frameRate: { ideal: 60 },
+        // @ts-ignore
         resizeMode: "crop-and-scale"
       };
     }
@@ -57,6 +58,7 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
     width: { ideal: 3840 }, 
     height: { ideal: 2160 },
     frameRate: { ideal: 60 },
+    // @ts-ignore
     resizeMode: "crop-and-scale"
   };
 }
@@ -176,6 +178,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
               width: { ideal: 3840 }, 
               height: { ideal: 2160 },
               frameRate: { ideal: 60 },
+              // @ts-ignore
               resizeMode: "crop-and-scale"
             },
             audio: false,
@@ -410,6 +413,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
           width: { ideal: 3840 }, 
           height: { ideal: 2160 },
           frameRate: { ideal: 60 },
+          // @ts-ignore
           resizeMode: "crop-and-scale"
         },
         audio: false,

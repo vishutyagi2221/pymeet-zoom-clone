@@ -1,0 +1,1 @@
+import{j as s}from"./index-Ct6vriPp.js";function t({children:r,className:o="",...e}){return s.jsx("div",{className:`rounded-lg border border-line bg-white/[0.07] shadow-soft backdrop-blur-xl ${o}`,...e,children:r})}export{t as C};

@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Modal } from "./Modal";
-import toast from "react-hot-toast";
 
 export function UserProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Sync state when modal opens
   useEffect(() => {
@@ -20,19 +21,25 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+    
     if (!name.trim()) {
-      toast.error("Name cannot be empty");
+      setError("Name cannot be empty");
       return;
     }
     
     setIsSubmitting(true);
     try {
       await updateProfile(name, password);
-      toast.success("Profile updated successfully!");
+      setSuccess("Profile updated successfully!");
       setPassword(""); // Clear password field after success
-      onClose();
+      setTimeout(() => {
+        onClose();
+        setSuccess("");
+      }, 1500);
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Failed to update profile");
+      setError(err.response?.data?.detail || "Failed to update profile");
     } finally {
       setIsSubmitting(false);
     }
@@ -95,6 +102,9 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
             className="w-full rounded-lg border border-line bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
           />
         </div>
+
+        {error && <p className="text-sm text-rose-400">{error}</p>}
+        {success && <p className="text-sm text-green-400">{success}</p>}
 
         <button 
           type="submit" 
