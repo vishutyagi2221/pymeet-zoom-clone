@@ -6,17 +6,10 @@ services:
     startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port 10000"
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: pymeet-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: ENVIRONMENT
         value: production
       - key: FRONTEND_ORIGIN
         value: "*" # Change this to your Vercel URL later for better security
-
-databases:
-  - name: pymeet-db
-    databaseName: pymeet
-    user: pymeet
