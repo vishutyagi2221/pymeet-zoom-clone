@@ -40,13 +40,23 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
     ) || cameras.find((device) => !VIRTUAL_CAMERA_PATTERN.test(device.label));
 
     if (physicalCamera?.deviceId) {
-      return { deviceId: { exact: physicalCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } };
+      return { 
+        deviceId: { exact: physicalCamera.deviceId }, 
+        width: { ideal: 1920, min: 1280 }, 
+        height: { ideal: 1080, min: 720 },
+        frameRate: { ideal: 30, max: 60 }
+      };
     }
   } catch {
     // Device labels may be hidden until the first permission grant.
   }
 
-  return { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
+  return { 
+    facingMode: "user", 
+    width: { ideal: 1920, min: 1280 }, 
+    height: { ideal: 1080, min: 720 },
+    frameRate: { ideal: 30, max: 60 }
+  };
 }
 
 export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boolean) {
@@ -125,13 +135,26 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     try {
       const video = await preferredCameraConstraints();
       const savedMicId = window.localStorage.getItem(MIC_STORAGE_KEY);
-      const audioConstraints = savedMicId ? { deviceId: { exact: savedMicId } } : true;
+      
+      const baseAudioConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+      
+      const audioConstraints = savedMicId 
+        ? { ...baseAudioConstraints, deviceId: { exact: savedMicId } } 
+        : baseAudioConstraints;
       
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video, audio: audioConstraints });
       } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
+        // Fallback if strict constraints fail
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } }, 
+          audio: baseAudioConstraints 
+        });
       }
 
       const deviceLists = await updateDeviceList(true);
@@ -144,7 +167,12 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       if (currentTrack && physicalCamera && VIRTUAL_CAMERA_PATTERN.test(currentTrack.label) && physicalCamera.deviceId !== currentTrack.getSettings().deviceId) {
         try {
           const physicalStream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: { exact: physicalCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: { 
+              deviceId: { exact: physicalCamera.deviceId }, 
+              width: { ideal: 1920, min: 1280 }, 
+              height: { ideal: 1080, min: 720 },
+              frameRate: { ideal: 30, max: 60 }
+            },
             audio: false,
           });
           currentTrack.stop();
@@ -372,7 +400,12 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     if (!deviceId || screenSharing) return;
     try {
       const cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { 
+          deviceId: { exact: deviceId }, 
+          width: { ideal: 1920, min: 1280 }, 
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, max: 60 }
+        },
         audio: false,
       });
       const nextTrack = cameraStream.getVideoTracks()[0];
@@ -403,7 +436,12 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     if (!deviceId) return;
     try {
       const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } },
+        audio: { 
+          deviceId: { exact: deviceId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
         video: false,
       });
       const nextTrack = micStream.getAudioTracks()[0];
