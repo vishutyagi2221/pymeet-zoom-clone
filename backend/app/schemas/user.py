@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
+    current_password: str | None = Field(default=None)
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
 class UserLogin(BaseModel):

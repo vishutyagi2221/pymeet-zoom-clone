@@ -45,12 +45,19 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
         return None
     return user
 
+
 def update_user(db: Session, current_user: User, payload: UserUpdate) -> User:
-    if payload.name is not None:
-        current_user.name = payload.name.strip()
-    if payload.password is not None and payload.password.strip():
+    if payload.name:
+        current_user.name = payload.name
+        
+    if payload.password:
+        if not payload.current_password:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is required to set a new password")
+        if not verify_password(payload.current_password, current_user.hashed_password):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect current password")
+            
         current_user.hashed_password = hash_password(payload.password)
-    
+        
     db.commit()
     db.refresh(current_user)
     return current_user

@@ -8,7 +8,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  updateProfile: (name?: string, password?: string) => Promise<void>;
+  updateProfile: (name?: string, current_password?: string, new_password?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -46,10 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(data.access_token);
       setUser(data.user);
     },
-    updateProfile: async (name, password) => {
+    updateProfile: async (name, current_password, new_password) => {
       const payload: any = {};
       if (name) payload.name = name;
-      if (password) payload.password = password;
+      if (current_password) payload.current_password = current_password;
+      if (new_password) payload.password = new_password;
       const { data } = await authApi.updateProfile(payload);
       setUser(data);
     },

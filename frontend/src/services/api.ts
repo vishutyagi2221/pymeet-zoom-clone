@@ -24,7 +24,7 @@ export const authApi = {
   register: (payload: { name: string; email: string; password: string }) => api.post<AuthResponse>("/api/auth/register", payload),
   login: (payload: { email: string; password: string }) => api.post<AuthResponse>("/api/auth/login", payload),
   me: () => api.get<User>("/api/auth/me"),
-  updateProfile: (payload: { name?: string; password?: string }) => api.put<User>("/api/auth/me", payload)
+  updateProfile: (payload: { name?: string; current_password?: string; password?: string }) => api.put<User>("/api/auth/me", payload)
 };
 
 export const meetingApi = {

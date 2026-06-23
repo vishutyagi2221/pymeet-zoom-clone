@@ -6,7 +6,8 @@ import { Modal } from "./Modal";
 export function UserProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -29,11 +30,17 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
       return;
     }
     
+    if (newPassword && !currentPassword) {
+      setError("Please enter your current password to set a new one");
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
-      await updateProfile(name, password);
+      await updateProfile(name, currentPassword, newPassword);
       setSuccess("Profile updated successfully!");
-      setPassword(""); // Clear password field after success
+      setCurrentPassword("");
+      setNewPassword("");
       setTimeout(() => {
         onClose();
         setSuccess("");
@@ -89,17 +96,20 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-200" htmlFor="profile-password">
-            New Password (Optional)
-          </label>
+          <label className="mb-2 block text-sm font-medium text-slate-300">Change Password</label>
           <input 
-            id="profile-password" 
             type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            placeholder="Leave blank to keep current password" 
-            minLength={8}
-            className="w-full rounded-lg border border-line bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+            value={currentPassword} 
+            onChange={(e) => setCurrentPassword(e.target.value)} 
+            className="mb-3 w-full rounded-lg border border-line bg-ink px-4 py-2.5 text-white outline-none focus:border-cyan-300"
+            placeholder="Current Password"
+          />
+          <input 
+            type="password" 
+            value={newPassword} 
+            onChange={(e) => setNewPassword(e.target.value)} 
+            className="w-full rounded-lg border border-line bg-ink px-4 py-2.5 text-white outline-none focus:border-cyan-300"
+            placeholder="New Password"
           />
         </div>
 
