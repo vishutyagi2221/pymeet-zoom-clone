@@ -16,6 +16,31 @@ https://pymeet.onrender.com
 
 If Render assigns a different service slug, use that URL instead.
 
+## Render Environment
+
+Do not paste the local Docker database values into Render:
+
+```env
+POSTGRES_USER=pymeet
+POSTGRES_PASSWORD=pymeet_password
+POSTGRES_DB=pymeet
+DATABASE_URL=postgresql://pymeet:pymeet_password@postgres:5432/pymeet
+```
+
+Those values only work inside local `docker-compose.yml`, where the database container is named `postgres`.
+
+For Render, set only this value when the Blueprint asks:
+
+```env
+DATABASE_URL=<paste your existing Render Postgres Internal Database URL here>
+```
+
+It should look like this, but with your real Render values:
+
+```text
+postgresql://render_user:render_password@dpg-xxxxx-a.oregon-postgres.render.com/render_database
+```
+
 ## After Deploy
 
 - Create a fresh account on the public URL. Local Docker users are not copied to the cloud database.
