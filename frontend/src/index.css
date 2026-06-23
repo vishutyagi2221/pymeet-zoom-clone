@@ -3,10 +3,46 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root { 
+  color-scheme: light;
+  --color-ink: #f0fdf4; /* VERY light cyan/white for background */
+  --color-panel: rgba(255, 255, 255, 0.9);
+  --color-line: rgba(0, 0, 0, 0.1);
+  --color-white: #0f172a; /* Slate 900 for texts that were white */
+  --color-slate-950: #ffffff; /* White for backgrounds that were slate-950 */
+  --color-slate-900: #f8fafc;
+  --color-slate-800: #e2e8f0;
+  --color-slate-500: #64748b;
+  --color-slate-400: #475569;
+  --color-slate-300: #334155;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-ink: #0a0f1f;
+  --color-panel: rgba(16, 24, 40, 0.72);
+  --color-line: rgba(255, 255, 255, 0.12);
+  --color-white: #ffffff;
+  --color-slate-950: #020617;
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-300: #cbd5e1;
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; background: #0a0f1f; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+body { 
+  margin: 0; 
+  min-width: 320px; 
+  background: var(--color-ink); 
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif; 
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
 .bg-premium {
+  background: var(--color-ink);
+}
+.dark .bg-premium {
   background:
     radial-gradient(circle at 15% 15%, rgba(34, 211, 238, 0.18), transparent 28%),
     radial-gradient(circle at 85% 10%, rgba(244, 114, 182, 0.14), transparent 24%),

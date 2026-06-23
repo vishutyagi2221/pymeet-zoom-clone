@@ -1,11 +1,13 @@
-import { LogOut, Settings, Video } from "lucide-react";
+import { LogOut, Settings, Video, Moon, Sun } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
 import { SupportModal } from "./SupportModal";
+import { useTheme } from "../context/ThemeContext";
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -32,6 +34,20 @@ export function Navbar() {
               {/* Dropdown Menu */}
               {isDropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-lg border border-line bg-slate-900 shadow-soft">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+                    <span className="text-sm text-slate-200">Theme</span>
+                    <button 
+                      onClick={toggleTheme}
+                      className="rounded-full p-1.5 hover:bg-white/10 transition-colors"
+                      aria-label="Toggle Theme"
+                    >
+                      {theme === 'dark' ? (
+                        <Moon size={18} className="text-yellow-400 fill-yellow-400" />
+                      ) : (
+                        <Sun size={18} className="text-yellow-500 fill-yellow-500" />
+                      )}
+                    </button>
+                  </div>
                   <button 
                     onClick={() => {
                       setIsSupportOpen(true);

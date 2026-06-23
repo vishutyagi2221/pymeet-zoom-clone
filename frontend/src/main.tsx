@@ -9,6 +9,7 @@ const Dashboard = React.lazy(() => import("./pages/Dashboard").then(m => ({ defa
 const CreateMeeting = React.lazy(() => import("./pages/CreateMeeting").then(m => ({ default: m.CreateMeeting })));
 const JoinMeeting = React.lazy(() => import("./pages/JoinMeeting").then(m => ({ default: m.JoinMeeting })));
 const MeetingRoom = React.lazy(() => import("./pages/MeetingRoom").then(m => ({ default: m.MeetingRoom })));
+import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -28,18 +29,20 @@ function Public({ children }: { children: React.ReactNode }) {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <React.Suspense fallback={<LoadingScreen />}>
-          <Routes>
-            <Route path="/login" element={<Public><Login /></Public>} />
-            <Route path="/register" element={<Public><Register /></Public>} />
-            <Route path="/" element={<Protected><Dashboard /></Protected>} />
-            <Route path="/create" element={<Protected><CreateMeeting /></Protected>} />
-            <Route path="/join" element={<Protected><JoinMeeting /></Protected>} />
-            <Route path="/meeting/:meetingId" element={<Protected><MeetingRoom /></Protected>} />
-          </Routes>
-        </React.Suspense>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <React.Suspense fallback={<LoadingScreen />}>
+            <Routes>
+              <Route path="/login" element={<Public><Login /></Public>} />
+              <Route path="/register" element={<Public><Register /></Public>} />
+              <Route path="/" element={<Protected><Dashboard /></Protected>} />
+              <Route path="/create" element={<Protected><CreateMeeting /></Protected>} />
+              <Route path="/join" element={<Protected><JoinMeeting /></Protected>} />
+              <Route path="/meeting/:meetingId" element={<Protected><MeetingRoom /></Protected>} />
+            </Routes>
+          </React.Suspense>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
