@@ -1,4 +1,4 @@
-﻿from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserUpdate
 from app.utils.security import create_access_token, decode_token, hash_password, verify_password
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -44,6 +44,16 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
+
+def update_user(db: Session, current_user: User, payload: UserUpdate) -> User:
+    if payload.name is not None:
+        current_user.name = payload.name.strip()
+    if payload.password is not None and payload.password.strip():
+        current_user.hashed_password = hash_password(payload.password)
+    
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 
 def issue_token(user: User) -> str:

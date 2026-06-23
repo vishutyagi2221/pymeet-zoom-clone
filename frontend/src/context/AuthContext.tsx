@@ -1,4 +1,4 @@
-﻿import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "../services/api";
 import type { User } from "../types";
 
@@ -7,7 +7,9 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  sendOtp: (email: string) => Promise<string>;
+  register: (name: string, email: string, password: string, otp: string) => Promise<void>;
+  updateProfile: (name?: string, password?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -39,11 +41,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(data.access_token);
       setUser(data.user);
     },
-    register: async (name, email, password) => {
-      const { data } = await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password });
+    sendOtp: async (email) => {
+      const { data } = await authApi.sendOtp({ email: email.trim().toLowerCase() });
+      return data.mock_otp;
+    },
+    register: async (name, email, password, otp) => {
+      const { data } = await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password, otp });
       localStorage.setItem("pymeet_token", data.access_token);
       setToken(data.access_token);
       setUser(data.user);
+    },
+    updateProfile: async (name, password) => {
+      const payload: any = {};
+      if (name) payload.name = name;
+      if (password) payload.password = password;
+      const { data } = await authApi.updateProfile(payload);
+      setUser(data);
     },
     logout: () => {
       localStorage.removeItem("pymeet_token");

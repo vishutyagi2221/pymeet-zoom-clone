@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
 import { SupportModal } from "./SupportModal";
+import { UserProfileModal } from "./UserProfileModal";
 import { useTheme } from "../context/ThemeContext";
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
@@ -48,6 +50,17 @@ export function Navbar() {
                       )}
                     </button>
                   </div>
+                  {user && (
+                    <button 
+                      onClick={() => {
+                        setIsProfileOpen(true);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-slate-200 transition-colors hover:bg-white/10"
+                    >
+                      My Profile
+                    </button>
+                  )}
                   <button 
                     onClick={() => {
                       setIsSupportOpen(true);
@@ -67,6 +80,7 @@ export function Navbar() {
         </div>
       </nav>
       <SupportModal open={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
+      <UserProfileModal open={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </>
   );
 }
