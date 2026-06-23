@@ -3,12 +3,12 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoadingScreen } from "./components/LoadingScreen";
-import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
-import { Dashboard } from "./pages/Dashboard";
-import { CreateMeeting } from "./pages/CreateMeeting";
-import { JoinMeeting } from "./pages/JoinMeeting";
-import { MeetingRoom } from "./pages/MeetingRoom";
+const Login = React.lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
+const Register = React.lazy(() => import("./pages/Register").then(m => ({ default: m.Register })));
+const Dashboard = React.lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const CreateMeeting = React.lazy(() => import("./pages/CreateMeeting").then(m => ({ default: m.CreateMeeting })));
+const JoinMeeting = React.lazy(() => import("./pages/JoinMeeting").then(m => ({ default: m.JoinMeeting })));
+const MeetingRoom = React.lazy(() => import("./pages/MeetingRoom").then(m => ({ default: m.MeetingRoom })));
 import "./index.css";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -29,14 +29,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Public><Login /></Public>} />
-          <Route path="/register" element={<Public><Register /></Public>} />
-          <Route path="/" element={<Protected><Dashboard /></Protected>} />
-          <Route path="/create" element={<Protected><CreateMeeting /></Protected>} />
-          <Route path="/join" element={<Protected><JoinMeeting /></Protected>} />
-          <Route path="/meeting/:meetingId" element={<Protected><MeetingRoom /></Protected>} />
-        </Routes>
+        <React.Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route path="/login" element={<Public><Login /></Public>} />
+            <Route path="/register" element={<Public><Register /></Public>} />
+            <Route path="/" element={<Protected><Dashboard /></Protected>} />
+            <Route path="/create" element={<Protected><CreateMeeting /></Protected>} />
+            <Route path="/join" element={<Protected><JoinMeeting /></Protected>} />
+            <Route path="/meeting/:meetingId" element={<Protected><MeetingRoom /></Protected>} />
+          </Routes>
+        </React.Suspense>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

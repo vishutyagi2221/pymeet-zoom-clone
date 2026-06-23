@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Camera, Copy, Settings2, Shield } from "lucide-react";
 import { ChatPanel } from "../components/ChatPanel";
@@ -20,6 +20,7 @@ export function MeetingRoom() {
   const { token, user } = useAuth();
   const socket = useSocket(token);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState(false);
@@ -32,6 +33,7 @@ export function MeetingRoom() {
     meetingApi.get(meetingId).then(({ data }) => {
       setMeeting(data);
       if (!data.is_active) setExitMessage("This meeting has already ended. Thanks for stopping by.");
+      setIsLoading(false);
     }).catch(() => navigate("/"));
   }, [meetingId, navigate]);
   useEffect(() => {
@@ -64,6 +66,8 @@ export function MeetingRoom() {
       : "You left the meeting and your camera and microphone are now disconnected."
     );
   };
+
+  if (isLoading) return <div className="grid min-h-screen place-items-center bg-[#050914]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" /></div>;
 
   if (exitMessage) return (
     <MeetingExitScreen

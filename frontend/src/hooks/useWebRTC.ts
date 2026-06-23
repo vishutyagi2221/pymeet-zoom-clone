@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import type { RoomParticipant } from "../types";
 
@@ -341,34 +341,40 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   };
 
   const toggleCamera = async () => {
-  if (!localStreamRef.current) { await requestMedia(); return; }
+    if (!localStreamRef.current) { void requestMedia(); return; }
 
-  const track = localStreamRef.current.getVideoTracks()[0];
+    const currentTrack = localStreamRef.current.getVideoTracks()[0];
 
-  if (!track) return;
-
-  // Turn OFF
-  if (track.enabled) {
-    track.enabled = false;
-    setCameraEnabled(false);
-    return;
-  }
-
-  // Turn ON
-  track.enabled = true;
-
-  peers.current.forEach((peer) => {
-    const sender = peer
-      .getSenders()
-      .find((s) => s.track?.kind === "video");
-
-    if (sender) {
-      sender.replaceTrack(track);
+    if (cameraEnabled) {
+      if (currentTrack) currentTrack.stop();
+      setCameraEnabled(false);
+      return;
     }
-  });
 
-  setCameraEnabled(true);
-};
+    try {
+      const videoConstraints = await preferredCameraConstraints();
+      const newStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+      const newTrack = newStream.getVideoTracks()[0];
+      if (!newTrack) return;
+
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      const nextStream = new MediaStream([newTrack, ...audioTracks]);
+
+      localStreamRef.current = nextStream;
+      cameraTrackRef.current = newTrack;
+      setLocalStream(nextStream);
+      setCameraEnabled(true);
+      setMediaError(null);
+
+      peers.current.forEach((peer) => {
+        const sender = peer.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) void sender.replaceTrack(newTrack);
+        else peer.addTrack(newTrack, nextStream);
+      });
+    } catch {
+      setMediaError("Could not restart camera. Check permissions.");
+    }
+  };
 
   const shareScreen = async () => {
   if (!localStreamRef.current) return;
