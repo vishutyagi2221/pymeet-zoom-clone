@@ -18,7 +18,10 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     if (open && user) {
       setName(user.name);
-      setPassword("");
+      setCurrentPassword("");
+      setNewPassword("");
+      setResetToken("");
+      setForgotMode(false);
     }
   }, [open, user]);
 
