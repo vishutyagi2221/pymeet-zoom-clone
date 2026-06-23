@@ -50,17 +50,7 @@ export function Navbar() {
                       )}
                     </button>
                   </div>
-                  {user && (
-                    <button 
-                      onClick={() => {
-                        setIsProfileOpen(true);
-                        setIsDropdownOpen(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-slate-200 transition-colors hover:bg-white/10"
-                    >
-                      My Profile
-                    </button>
-                  )}
+
                   <button 
                     onClick={() => {
                       setIsSupportOpen(true);
@@ -74,7 +64,18 @@ export function Navbar() {
               )}
             </div>
 
-            {user && <div className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-2 py-1.5 text-white"><span className="grid h-7 w-7 place-items-center rounded-full text-xs font-bold" style={{ background: user.avatar_color }}>{user.name[0]}</span><span className="hidden text-sm sm:block">{user.name}</span></div>}
+            {user && (
+              <button 
+                onClick={() => setIsProfileOpen(true)}
+                className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-2 py-1.5 text-white hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="My Profile"
+              >
+                <span className="grid h-7 w-7 place-items-center rounded-full text-xs font-bold" style={{ background: user.avatar_color }}>
+                  {user.name[0]}
+                </span>
+                <span className="hidden text-sm sm:block">{user.name}</span>
+              </button>
+            )}
             <button onClick={logout} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Logout"><LogOut size={18} /></button>
           </div>
         </div>

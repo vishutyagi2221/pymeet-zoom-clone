@@ -7,8 +7,7 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  sendOtp: (email: string) => Promise<string>;
-  register: (name: string, email: string, password: string, otp: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   updateProfile: (name?: string, password?: string) => Promise<void>;
   logout: () => void;
 }
@@ -41,12 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(data.access_token);
       setUser(data.user);
     },
-    sendOtp: async (email) => {
-      const { data } = await authApi.sendOtp({ email: email.trim().toLowerCase() });
-      return data.mock_otp;
-    },
-    register: async (name, email, password, otp) => {
-      const { data } = await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password, otp });
+    register: async (name, email, password) => {
+      const { data } = await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password });
       localStorage.setItem("pymeet_token", data.access_token);
       setToken(data.access_token);
       setUser(data.user);

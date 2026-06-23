@@ -7,11 +7,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
 
-class UserRegisterOTP(UserCreate):
-    otp: str = Field(min_length=6, max_length=6)
-
-class SendOTP(BaseModel):
-    email: EmailStr
 
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
