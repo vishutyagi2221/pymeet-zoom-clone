@@ -42,9 +42,10 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
     if (physicalCamera?.deviceId) {
       return { 
         deviceId: { exact: physicalCamera.deviceId }, 
-        width: { ideal: 1920, min: 1280 }, 
-        height: { ideal: 1080, min: 720 },
-        frameRate: { ideal: 30, max: 60 }
+        width: { ideal: 1280, max: 1920 }, 
+        height: { ideal: 720, max: 1080 },
+        frameRate: { ideal: 24, max: 30 },
+        resizeMode: "crop-and-scale"
       };
     }
   } catch {
@@ -53,9 +54,10 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
 
   return { 
     facingMode: "user", 
-    width: { ideal: 1920, min: 1280 }, 
-    height: { ideal: 1080, min: 720 },
-    frameRate: { ideal: 30, max: 60 }
+    width: { ideal: 1280, max: 1920 }, 
+    height: { ideal: 720, max: 1080 },
+    frameRate: { ideal: 24, max: 30 },
+    resizeMode: "crop-and-scale"
   };
 }
 
@@ -140,6 +142,8 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
+        sampleRate: 48000,
+        channelCount: 1,
       };
       
       const audioConstraints = savedMicId 
@@ -169,9 +173,10 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
           const physicalStream = await navigator.mediaDevices.getUserMedia({
             video: { 
               deviceId: { exact: physicalCamera.deviceId }, 
-              width: { ideal: 1920, min: 1280 }, 
-              height: { ideal: 1080, min: 720 },
-              frameRate: { ideal: 30, max: 60 }
+              width: { ideal: 1280, max: 1920 }, 
+              height: { ideal: 720, max: 1080 },
+              frameRate: { ideal: 24, max: 30 },
+              resizeMode: "crop-and-scale"
             },
             audio: false,
           });
@@ -402,9 +407,10 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       const cameraStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           deviceId: { exact: deviceId }, 
-          width: { ideal: 1920, min: 1280 }, 
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, max: 60 }
+          width: { ideal: 1280, max: 1920 }, 
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 24, max: 30 },
+          resizeMode: "crop-and-scale"
         },
         audio: false,
       });
@@ -441,6 +447,8 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
         },
         video: false,
       });
