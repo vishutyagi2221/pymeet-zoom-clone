@@ -8,6 +8,8 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
   const [name, setName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetToken, setResetToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -30,17 +32,24 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
       return;
     }
     
-    if (newPassword && !currentPassword) {
+    if (newPassword && !currentPassword && !forgotMode) {
       setError("Please enter your current password to set a new one");
+      return;
+    }
+    
+    if (forgotMode && newPassword && resetToken !== "123456") {
+      setError("Invalid security code");
       return;
     }
     
     setIsSubmitting(true);
     try {
-      await updateProfile(name, currentPassword, newPassword);
+      await updateProfile(name, currentPassword, newPassword, forgotMode ? resetToken : undefined);
       setSuccess("Profile updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
+      setResetToken("");
+      setForgotMode(false);
       setTimeout(() => {
         onClose();
         setSuccess("");
@@ -96,14 +105,49 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-300">Change Password</label>
-          <input 
-            type="password" 
-            value={currentPassword} 
-            onChange={(e) => setCurrentPassword(e.target.value)} 
-            className="mb-3 w-full rounded-lg border border-line bg-ink px-4 py-2.5 text-white outline-none focus:border-cyan-300"
-            placeholder="Current Password"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-slate-300">Change Password</label>
+            {!forgotMode ? (
+              <button 
+                type="button" 
+                onClick={() => setForgotMode(true)}
+                className="text-xs text-cyan-400 hover:text-cyan-300"
+              >
+                Forgot Password?
+              </button>
+            ) : (
+              <button 
+                type="button" 
+                onClick={() => setForgotMode(false)}
+                className="text-xs text-slate-400 hover:text-slate-300"
+              >
+                Cancel Reset
+              </button>
+            )}
+          </div>
+          
+          {forgotMode ? (
+            <div className="mb-3 rounded-lg border border-cyan-900/50 bg-cyan-900/20 p-3">
+              <p className="mb-2 text-xs text-cyan-200">Enter security code <span className="font-bold">123456</span> to reset your password (Mock Verification).</p>
+              <input 
+                type="text" 
+                value={resetToken} 
+                onChange={(e) => setResetToken(e.target.value)} 
+                className="w-full rounded-lg border border-line bg-ink px-4 py-2.5 text-white outline-none focus:border-cyan-300 tracking-widest text-center font-mono"
+                placeholder="------"
+                maxLength={6}
+              />
+            </div>
+          ) : (
+            <input 
+              type="password" 
+              value={currentPassword} 
+              onChange={(e) => setCurrentPassword(e.target.value)} 
+              className="mb-3 w-full rounded-lg border border-line bg-ink px-4 py-2.5 text-white outline-none focus:border-cyan-300"
+              placeholder="Current Password"
+            />
+          )}
+          
           <input 
             type="password" 
             value={newPassword} 

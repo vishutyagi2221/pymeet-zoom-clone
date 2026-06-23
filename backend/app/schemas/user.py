@@ -12,6 +12,7 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     current_password: str | None = Field(default=None)
     password: str | None = Field(default=None, min_length=8, max_length=128)
+    reset_token: str | None = Field(default=None)
 
 class UserLogin(BaseModel):
     email: EmailStr
