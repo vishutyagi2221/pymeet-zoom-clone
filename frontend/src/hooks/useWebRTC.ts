@@ -42,9 +42,9 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
     if (physicalCamera?.deviceId) {
       return { 
         deviceId: { exact: physicalCamera.deviceId }, 
-        width: { ideal: 1280, max: 1920 }, 
-        height: { ideal: 720, max: 1080 },
-        frameRate: { ideal: 24, max: 30 },
+        width: { ideal: 3840 }, 
+        height: { ideal: 2160 },
+        frameRate: { ideal: 60 },
         resizeMode: "crop-and-scale"
       };
     }
@@ -54,9 +54,9 @@ async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boo
 
   return { 
     facingMode: "user", 
-    width: { ideal: 1280, max: 1920 }, 
-    height: { ideal: 720, max: 1080 },
-    frameRate: { ideal: 24, max: 30 },
+    width: { ideal: 3840 }, 
+    height: { ideal: 2160 },
+    frameRate: { ideal: 60 },
     resizeMode: "crop-and-scale"
   };
 }
@@ -173,9 +173,9 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
           const physicalStream = await navigator.mediaDevices.getUserMedia({
             video: { 
               deviceId: { exact: physicalCamera.deviceId }, 
-              width: { ideal: 1280, max: 1920 }, 
-              height: { ideal: 720, max: 1080 },
-              frameRate: { ideal: 24, max: 30 },
+              width: { ideal: 3840 }, 
+              height: { ideal: 2160 },
+              frameRate: { ideal: 60 },
               resizeMode: "crop-and-scale"
             },
             audio: false,
@@ -407,9 +407,9 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       const cameraStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           deviceId: { exact: deviceId }, 
-          width: { ideal: 1280, max: 1920 }, 
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 24, max: 30 },
+          width: { ideal: 3840 }, 
+          height: { ideal: 2160 },
+          frameRate: { ideal: 60 },
           resizeMode: "crop-and-scale"
         },
         audio: false,
