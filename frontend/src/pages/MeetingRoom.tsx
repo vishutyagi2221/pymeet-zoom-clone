@@ -5,6 +5,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { MeetingAssistant } from "../components/MeetingAssistant";
 import { MeetingControls } from "../components/MeetingControls";
 import { MeetingExitScreen } from "../components/MeetingExitScreen";
+import { InviteModal } from "../components/InviteModal";
 import { Modal } from "../components/Modal";
 import { ParticipantPanel } from "../components/ParticipantPanel";
 import { VideoGrid } from "../components/VideoGrid";
@@ -23,6 +24,7 @@ export function MeetingRoom() {
   const [isLoading, setIsLoading] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [waitingParticipants, setWaitingParticipants] = useState<RoomParticipant[]>([]);
@@ -134,7 +136,7 @@ export function MeetingRoom() {
       )}
 
       <MeetingAssistant socket={socket} participants={participants} waitingParticipants={waitingParticipants} isHost={localParticipant?.is_host ?? false} screenSharing={screenSharing} />
-      <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onLeave={exit} />
+      <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onInvite={() => setInviteOpen(true)} onLeave={exit} />
       
       <Modal open={cameraSettingsOpen} title="Device Settings" onClose={() => setCameraSettingsOpen(false)}>
         <div className="flex flex-col gap-4">
@@ -165,6 +167,7 @@ export function MeetingRoom() {
           </div>
         </div>
       </Modal>      
+      <InviteModal open={inviteOpen} meetingId={meetingId} meetingTitle={meeting?.title || "PyMeet Meeting"} onClose={() => setInviteOpen(false)} />
       <ChatPanel open={chatOpen} socket={socket} localUser={localParticipant} onClose={() => setChatOpen(false)} />
       <ParticipantPanel open={participantsOpen} participants={participants} waitingParticipants={waitingParticipants} socket={socket} meetingId={meetingId} currentSid={socket?.id} onClose={() => setParticipantsOpen(false)} />
     </main>
