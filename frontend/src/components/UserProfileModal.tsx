@@ -35,14 +35,28 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
       return;
     }
     
-    if (newPassword && !currentPassword && !forgotMode) {
-      setError("Please enter your current password to set a new one");
-      return;
-    }
-    
-    if (forgotMode && newPassword && resetToken !== "123456") {
-      setError("Invalid security code");
-      return;
+    if (forgotMode) {
+      if (!newPassword) {
+        setError("Please enter a new password");
+        return;
+      }
+      if (resetToken.trim() !== "123456") {
+        setError("Invalid security code");
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError("Password must be at least 8 characters long");
+        return;
+      }
+    } else if (newPassword) {
+      if (!currentPassword) {
+        setError("Please enter your current password to set a new one");
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError("Password must be at least 8 characters long");
+        return;
+      }
     }
     
     setIsSubmitting(true);
@@ -58,7 +72,9 @@ export function UserProfileModal({ open, onClose }: { open: boolean; onClose: ()
         setSuccess("");
       }, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to update profile");
+      let msg = err.response?.data?.detail;
+      if (Array.isArray(msg)) msg = msg[0]?.msg || "Invalid input format";
+      setError(typeof msg === "string" ? msg : "Failed to update profile");
     } finally {
       setIsSubmitting(false);
     }
