@@ -94,19 +94,26 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
       {/* Floating Reactions Overlay */}
       <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
         <AnimatePresence>
-          {reactions.map((reaction) => (
-            <motion.div
-              key={reaction.id}
-              initial={{ opacity: 0, y: 50, scale: 0.5, x: Math.random() * 40 - 20 }}
-              animate={{ opacity: 1, y: -100, scale: 1.5, x: Math.random() * 60 - 30 }}
-              exit={{ opacity: 0, scale: 2 }}
-              transition={{ duration: 2, ease: "easeOut" }}
-              className="absolute bottom-10 left-1/2 text-4xl drop-shadow-lg"
-              style={{ originX: 0.5, originY: 1 }}
-            >
-              {reaction.emoji}
-            </motion.div>
-          ))}
+          {reactions.map((reaction) => {
+            // Generate stable random paths based on the reaction ID
+            const seed = parseInt(reaction.id, 36) || Math.random() * 1000;
+            const startX = (seed % 100) - 50; // Random start between -50px and 50px
+            const endX = startX + ((seed % 200) - 100); // Drift outwards randomly up to 100px left or right
+            const duration = 2 + (seed % 10) / 10; // Random duration between 2.0s and 2.9s
+            
+            return (
+              <motion.div
+                key={reaction.id}
+                initial={{ opacity: 0, y: 50, scale: 0.5, x: startX }}
+                animate={{ opacity: [0, 1, 1, 0], y: -200, scale: [0.5, 1.5, 1.8, 2], x: endX }}
+                transition={{ duration: duration, ease: "easeOut" }}
+                className="absolute bottom-10 left-1/2 text-4xl drop-shadow-2xl"
+                style={{ originX: 0.5, originY: 1, marginLeft: "-18px" }}
+              >
+                {reaction.emoji}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
