@@ -613,30 +613,28 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     });
 
     const screenTrack = displayStream.getVideoTracks()[0];
-
     const cameraTrack = cameraTrackRef.current || localStreamRef.current.getVideoTracks()[0];
 
-    // Replace video track for every peer
-    peers.current.forEach((peer) => {
-      const sender = peer
-        .getSenders()
-        .find((s) => s.track?.kind === "video");
+    // Replace video track for every peer using transceivers (handles camera-off state)
+    const videoTransceivers = Array.from(peers.current.values())
+      .flatMap((p) => p.getTransceivers())
+      .filter((t) => t.receiver.track.kind === "video" || t.sender.track?.kind === "video" || !t.sender.track);
 
-      sender?.replaceTrack(screenTrack);
-    });
+    for (const t of videoTransceivers) {
+      if (t.sender) await t.sender.replaceTrack(screenTrack);
+    }
 
     // Update local preview
     const screenStreamWithAudio = new MediaStream([
-     screenTrack,
+      screenTrack,
       ...localStreamRef.current!.getAudioTracks(),
     ]);
 
     localStreamRef.current = screenStreamWithAudio;
     setLocalStream(screenStreamWithAudio);
-
     setScreenSharing(true);
 
-    screenTrack.onended = () => {
+    screenTrack.onended = async () => {
       const originalCameraTrack = cameraTrackRef.current || cameraTrack;
       if (!originalCameraTrack || originalCameraTrack.readyState !== "live") {
         setScreenSharing(false);
@@ -644,10 +642,9 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
         return;
       }
 
-      peers.current.forEach((peer) => {
-        const sender = peer.getSenders().find((s) => s.track?.kind === "video");
-        void sender?.replaceTrack(originalCameraTrack);
-      });
+      for (const t of videoTransceivers) {
+        if (t.sender) await t.sender.replaceTrack(originalCameraTrack);
+      }
 
       const restoredStream = new MediaStream([
         originalCameraTrack,
@@ -658,8 +655,11 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       setScreenSharing(false);
     };
 
-  } catch (err) {
-    console.error(err);
+  } catch (err: any) {
+    console.error("Screen sharing failed:", err);
+    if (err.name !== "NotAllowedError") {
+      alert(`Screen sharing failed: ${err.message || err.name}`);
+    }
   }
 };
 
