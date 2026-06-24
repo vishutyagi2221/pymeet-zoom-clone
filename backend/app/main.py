@@ -25,11 +25,13 @@ fastapi_app.include_router(meetings.router)
 
 
 @fastapi_app.get("/", tags=["System"])
+@fastapi_app.head("/", tags=["System"])
 def read_root():
     return {"message": "PyMeet Backend is running! Please visit the Vercel frontend URL to use the app.", "docs": "/docs"}
 
 
 @fastapi_app.get("/api/health", tags=["System"])
+@fastapi_app.head("/api/health", tags=["System"])
 def health():
     return {"status": "ok", "service": settings.app_name}
 
