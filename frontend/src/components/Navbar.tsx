@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 import { SupportModal } from "./SupportModal";
 import { UserProfileModal } from "./UserProfileModal";
+import { InstallInstructionsModal } from "./InstallInstructionsModal";
 import { useTheme } from "../context/ThemeContext";
 
 export function Navbar() {
@@ -12,7 +13,11 @@ export function Navbar() {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  
+  // Check if app is already running in standalone (PWA) mode
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || false;
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -30,13 +35,18 @@ export function Navbar() {
           <Link to="/" className="flex items-center gap-2 text-white"><span className="grid h-9 w-9 place-items-center rounded-lg bg-cyan-400 text-slate-950"><Video size={20} /></span><span className="text-lg font-bold">PyMeet</span></Link>
           <div className="flex items-center gap-3">
             {/* Install PWA Button */}
-            {deferredPrompt && (
+            {!isStandalone && (
               <button 
                 onClick={async () => {
-                  deferredPrompt.prompt();
-                  const { outcome } = await deferredPrompt.userChoice;
-                  if (outcome === 'accepted') {
-                    setDeferredPrompt(null);
+                  if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                      setDeferredPrompt(null);
+                    }
+                  } else {
+                    // Fallback to manual instructions if prompt event didn't fire
+                    setIsInstallModalOpen(true);
                   }
                 }}
                 className="flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-3 py-1.5 text-sm font-semibold text-cyan-400 transition-colors hover:bg-cyan-400/20 border border-cyan-400/20"
@@ -109,6 +119,7 @@ export function Navbar() {
       </nav>
       <SupportModal open={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
       <UserProfileModal open={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <InstallInstructionsModal open={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
     </>
   );
 }
