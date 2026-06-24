@@ -27,7 +27,6 @@ export function ReactionPicker({ onSelectReaction }: { onSelectReaction: (emoji:
               key={emoji}
               onClick={() => {
                 onSelectReaction(emoji);
-                setIsOpen(false);
               }}
               className="grid h-10 w-10 place-items-center rounded-full text-2xl transition-all hover:scale-125 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
             >
