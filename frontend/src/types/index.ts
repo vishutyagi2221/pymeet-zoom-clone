@@ -43,6 +43,8 @@ export interface ChatMessage {
   message: string;
   user: RoomParticipant;
   sentAt: string;
+  isPrivate?: boolean;
+  targetUser?: RoomParticipant;
 }
 
 export interface Reaction {

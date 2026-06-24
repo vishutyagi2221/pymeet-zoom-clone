@@ -175,7 +175,14 @@ async def chat_message(sid: str, data: dict[str, Any]):
     meeting_id = sid_to_room.get(sid)
     user = sid_to_user.get(sid)
     if meeting_id and user:
-        await sio.emit("chat-message", {"message": data.get("message", ""), "user": asdict(user), "sentAt": data.get("sentAt")}, room=meeting_id, skip_sid=sid)
+        target = data.get("target")
+        room_dict = rooms.get(meeting_id, {})
+        if target and target in room_dict:
+            # Send private message only to the target
+            await sio.emit("chat-message", {"message": data.get("message", ""), "user": asdict(user), "sentAt": data.get("sentAt"), "isPrivate": True}, to=target)
+        else:
+            # Broadcast to everyone
+            await sio.emit("chat-message", {"message": data.get("message", ""), "user": asdict(user), "sentAt": data.get("sentAt")}, room=meeting_id, skip_sid=sid)
 
 
 @sio.on("media-state")

@@ -169,11 +169,8 @@ export function MeetingRoom() {
         </div>
       </Modal>      
       <InviteModal open={inviteOpen} meetingId={meetingId} meetingTitle={meeting?.title || "PyMeet Meeting"} onClose={() => setInviteOpen(false)} />
-      <ChatPanel open={chatOpen} socket={socket} localUser={localParticipant} onClose={() => setChatOpen(false)} />
+      <ChatPanel open={chatOpen} socket={socket} localUser={localParticipant} participants={participants} onClose={() => setChatOpen(false)} />
       <ParticipantPanel open={participantsOpen} participants={participants} waitingParticipants={waitingParticipants} socket={socket} meetingId={meetingId} currentSid={socket?.id} onClose={() => setParticipantsOpen(false)} />
     </main>
   );
 }
-
-
-
