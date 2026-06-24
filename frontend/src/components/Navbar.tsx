@@ -1,7 +1,7 @@
-import { LogOut, Settings, Video, Moon, Sun } from "lucide-react";
+import { LogOut, Settings, Video, Moon, Sun, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SupportModal } from "./SupportModal";
 import { UserProfileModal } from "./UserProfileModal";
 import { useTheme } from "../context/ThemeContext";
@@ -12,6 +12,16 @@ export function Navbar() {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   return (
     <>
@@ -19,6 +29,23 @@ export function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2 text-white"><span className="grid h-9 w-9 place-items-center rounded-lg bg-cyan-400 text-slate-950"><Video size={20} /></span><span className="text-lg font-bold">PyMeet</span></Link>
           <div className="flex items-center gap-3">
+            {/* Install PWA Button */}
+            {deferredPrompt && (
+              <button 
+                onClick={async () => {
+                  deferredPrompt.prompt();
+                  const { outcome } = await deferredPrompt.userChoice;
+                  if (outcome === 'accepted') {
+                    setDeferredPrompt(null);
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-3 py-1.5 text-sm font-semibold text-cyan-400 transition-colors hover:bg-cyan-400/20 border border-cyan-400/20"
+                aria-label="Install App"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Install App</span>
+              </button>
+            )}
             
             {/* Settings Dropdown Container */}
             <div className="relative">

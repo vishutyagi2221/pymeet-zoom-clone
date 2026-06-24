@@ -11,3 +11,5 @@ node_modules/
 outputs/
 work/
 .vscode/
+frontend/dist/
+frontend/dist-electron/
