@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { RoomParticipant } from "../types";
+import type { RoomParticipant, Reaction } from "../types";
 
 interface RemoteStream {
   sid: string;
@@ -67,6 +67,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
@@ -413,6 +414,13 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
         return p;
       }));
     };
+    const onReceiveReaction = (reaction: { sid: string; emoji: string }) => {
+      const newReaction: Reaction = { id: Math.random().toString(36).substr(2, 9), sid: reaction.sid, emoji: reaction.emoji, timestamp: Date.now() };
+      setReactions((prev) => [...prev, newReaction]);
+      setTimeout(() => {
+        setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
+      }, 3000);
+    };
     const onLeft = ({ sid }: { sid: string }) => {
       const timer = disconnectTimers.current.get(sid);
       if (timer) window.clearTimeout(timer);
@@ -431,6 +439,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     socket.on("answer", onAnswer);
     socket.on("ice-candidate", onIce);
     socket.on("media-state", onMediaState);
+    socket.on("receive-reaction", onReceiveReaction);
     socket.on("user-left", onLeft);
     return () => {
       socket.off("room-joined", onRoomJoined);
@@ -440,6 +449,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       socket.off("answer", onAnswer);
       socket.off("ice-candidate", onIce);
       socket.off("media-state", onMediaState);
+      socket.off("receive-reaction", onReceiveReaction);
       socket.off("user-left", onLeft);
     };
   }, [callPeer, createPeer, socket, updateParticipants]);
@@ -653,6 +663,17 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   }
 };
 
+  const sendReaction = useCallback((emoji: string) => {
+    if (socket) {
+      socket.emit("send-reaction", { emoji });
+      const newReaction: Reaction = { id: Math.random().toString(36).substr(2, 9), sid: socket.id!, emoji, timestamp: Date.now() };
+      setReactions((prev) => [...prev, newReaction]);
+      setTimeout(() => {
+        setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
+      }, 3000);
+    }
+  }, [socket]);
+
   const leave = useCallback((endForEveryone = false) => {
     socket?.emit(endForEveryone ? "end-meeting" : "user-left", { meetingId });
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -665,19 +686,10 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   }, [meetingId, socket]);
 
   return { 
-    localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, 
+    localStream, remoteStreams, participants, reactions, micEnabled, cameraEnabled, screenSharing, mediaError, 
     videoDevices, audioInputDevices, audioOutputDevices, 
     selectedVideoDeviceId, selectedAudioInputId, selectedAudioOutputId, newDeviceConnected,
     requestMedia, selectVideoDevice, selectAudioInputDevice, selectAudioOutputDevice, clearNewDeviceToast,
-    toggleMic, toggleCamera, shareScreen, leave 
+    toggleMic, toggleCamera, shareScreen, sendReaction, leave 
   };
 }
-
-
-
-
-
-
-
-
-

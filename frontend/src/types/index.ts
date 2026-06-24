@@ -44,3 +44,10 @@ export interface ChatMessage {
   user: RoomParticipant;
   sentAt: string;
 }
+
+export interface Reaction {
+  id: string;
+  sid: string;
+  emoji: string;
+  timestamp: number;
+}

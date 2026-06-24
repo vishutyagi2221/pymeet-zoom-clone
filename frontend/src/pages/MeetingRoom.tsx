@@ -29,11 +29,12 @@ export function MeetingRoom() {
   const [waiting, setWaiting] = useState(false);
   const [waitingParticipants, setWaitingParticipants] = useState<RoomParticipant[]>([]);
   const [exitMessage, setExitMessage] = useState("");
-  const { localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, 
-    videoDevices, audioInputDevices, audioOutputDevices, 
+  const { 
+    localStream, remoteStreams, participants, reactions, micEnabled, cameraEnabled, screenSharing, mediaError, 
+    videoDevices, audioInputDevices, audioOutputDevices,
     selectedVideoDeviceId, selectedAudioInputId, selectedAudioOutputId, newDeviceConnected,
     requestMedia, selectVideoDevice, selectAudioInputDevice, selectAudioOutputDevice, clearNewDeviceToast,
-    toggleMic, toggleCamera, shareScreen, leave 
+    toggleMic, toggleCamera, shareScreen, sendReaction, leave 
   } = useWebRTC(socket, meetingId, Boolean(meeting?.is_active && !exitMessage));
 
   useEffect(() => {
@@ -109,7 +110,7 @@ export function MeetingRoom() {
       </header>
       
       <section className="fixed inset-0 flex h-full w-full items-center justify-center p-4">
-        <VideoGrid localStream={localStream} localUser={localParticipant} remoteStreams={remoteStreams} cameraEnabled={cameraEnabled} screenSharing={screenSharing} audioOutputDeviceId={selectedAudioOutputId} />
+        <VideoGrid localStream={localStream} localUser={localParticipant} remoteStreams={remoteStreams} cameraEnabled={cameraEnabled} screenSharing={screenSharing} audioOutputDeviceId={selectedAudioOutputId} reactions={reactions} />
       </section>
       
       {/* Media Error Toast */}
@@ -136,7 +137,7 @@ export function MeetingRoom() {
       )}
 
       <MeetingAssistant socket={socket} participants={participants} waitingParticipants={waitingParticipants} isHost={localParticipant?.is_host ?? false} screenSharing={screenSharing} />
-      <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onInvite={() => setInviteOpen(true)} onLeave={exit} />
+      <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onInvite={() => setInviteOpen(true)} onSendReaction={sendReaction} onLeave={exit} />
       
       <Modal open={cameraSettingsOpen} title="Device Settings" onClose={() => setCameraSettingsOpen(false)}>
         <div className="flex flex-col gap-4">

@@ -1,6 +1,7 @@
 import { MicOff, MonitorUp, VideoOff } from "lucide-react";
 import { memo, useEffect, useRef } from "react";
-import type { RoomParticipant } from "../types";
+import { motion, AnimatePresence } from "framer-motion";
+import type { RoomParticipant, Reaction } from "../types";
 
 interface VideoTileProps {
   stream: MediaStream | null;
@@ -11,9 +12,10 @@ interface VideoTileProps {
   active?: boolean;
   screen?: boolean;
   audioOutputDeviceId?: string;
+  reactions?: Reaction[];
 }
 
-export const VideoTile = memo(function VideoTile({ stream, participant, isLocal = false, muted = false, cameraEnabled = true, active = false, screen = false, audioOutputDeviceId }: VideoTileProps) {
+export const VideoTile = memo(function VideoTile({ stream, participant, isLocal = false, muted = false, cameraEnabled = true, active = false, screen = false, audioOutputDeviceId, reactions = [] }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -88,6 +90,26 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
           <span className="text-xs text-slate-400">{isLocal ? "Camera off" : participant?.name || ""}</span>
         </div>
       )}
+
+      {/* Floating Reactions Overlay */}
+      <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+        <AnimatePresence>
+          {reactions.map((reaction) => (
+            <motion.div
+              key={reaction.id}
+              initial={{ opacity: 0, y: 50, scale: 0.5, x: Math.random() * 40 - 20 }}
+              animate={{ opacity: 1, y: -100, scale: 1.5, x: Math.random() * 60 - 30 }}
+              exit={{ opacity: 0, scale: 2 }}
+              transition={{ duration: 2, ease: "easeOut" }}
+              className="absolute bottom-10 left-1/2 text-4xl drop-shadow-lg"
+              style={{ originX: 0.5, originY: 1 }}
+            >
+              {reaction.emoji}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-white">
         <span className="rounded-md bg-black/50 px-2 py-0.5 text-xs font-medium backdrop-blur-sm">
           {isLocal ? "You" : participant?.name || "Participant"}

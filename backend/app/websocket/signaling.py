@@ -185,6 +185,13 @@ async def media_state(sid: str, data: dict[str, Any]):
         await sio.emit("media-state", {**data, "sid": sid}, room=meeting_id, skip_sid=sid)
 
 
+@sio.on("send-reaction")
+async def send_reaction(sid: str, data: dict[str, Any]):
+    meeting_id = sid_to_room.get(sid)
+    if meeting_id:
+        await sio.emit("receive-reaction", {"sid": sid, "emoji": data.get("emoji")}, room=meeting_id)
+
+
 @sio.on("remove-participant")
 async def remove_participant(sid: str, data: dict[str, Any]):
     meeting_id = str(data.get("meetingId", "")).upper()

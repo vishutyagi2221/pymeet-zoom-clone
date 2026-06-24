@@ -4,14 +4,15 @@ import { VideoTile } from "./VideoTile";
 
 interface VideoGridProps {
   localStream: MediaStream | null;
-  localUser?: RoomParticipant;
+  localUser: RoomParticipant | undefined;
   remoteStreams: Array<{ sid: string; stream: MediaStream; participant?: RoomParticipant }>;
   cameraEnabled: boolean;
   screenSharing: boolean;
-  audioOutputDeviceId?: string;
+  audioOutputDeviceId: string;
+  reactions?: import("../types").Reaction[];
 }
 
-export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remoteStreams, cameraEnabled, screenSharing, audioOutputDeviceId }: VideoGridProps) {
+export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remoteStreams, cameraEnabled, screenSharing, audioOutputDeviceId, reactions = [] }: VideoGridProps) {
   const total = remoteStreams.length + 1;
 
   // Zoom-like grid columns based on participant count
@@ -36,13 +37,16 @@ export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remot
   return (
     <div className={`grid h-full auto-rows-fr gap-2 p-1 ${gridClass} ${sizeClass} items-center content-center`}>
       <VideoTile
+        key="local"
         stream={localStream}
         participant={localUser}
         isLocal
-        muted
+        muted={true}
         cameraEnabled={cameraEnabled}
-        active={total === 1}
+        active={false}
         screen={screenSharing}
+        audioOutputDeviceId={audioOutputDeviceId}
+        reactions={reactions.filter(r => r.sid === localUser?.sid)}
       />
       {remoteStreams.map((item) => (
         <VideoTile
@@ -53,6 +57,7 @@ export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remot
           cameraEnabled={item.participant?.cameraEnabled !== false}
           muted={item.participant?.micEnabled === false}
           audioOutputDeviceId={audioOutputDeviceId}
+          reactions={reactions.filter(r => r.sid === item.sid)}
         />
       ))}
     </div>
