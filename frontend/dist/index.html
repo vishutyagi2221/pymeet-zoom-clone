@@ -3,11 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PyMeet</title>
-    <script type="module" crossorigin src="/assets/index-CpXYcTra.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Dg5mm00T.css">
+    <title>PyMEET - Video Conferencing</title>
+    <style>
+      body { margin: 0; padding: 0; background-color: #020617; } /* bg-ink equivalent */
+      .instant-loader {
+        position: fixed; inset: 0; display: grid; place-items: center; background-color: #020617; z-index: 9999;
+      }
+      .spinner {
+        width: 48px; height: 48px; border-radius: 50%;
+        border: 2px solid #67e8f9; /* cyan-300 */
+        border-top-color: transparent;
+        animation: spin 1.2s linear infinite;
+      }
+      @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+    <script type="module" crossorigin src="/assets/index-CVvaNSRN.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-CSBI7L0d.js">
+    <link rel="modulepreload" crossorigin href="/assets/framer-Ip6p_Z7j.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DOK1CVTM.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="instant-loader">
+        <div class="spinner"></div>
+      </div>
+    </div>
   </body>
 </html>

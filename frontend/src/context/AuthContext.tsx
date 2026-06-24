@@ -15,18 +15,30 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem("pymeet_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("pymeet_token"));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !(localStorage.getItem("pymeet_token") && localStorage.getItem("pymeet_user")));
 
   useEffect(() => {
     if (!token) {
       setLoading(false);
       return;
     }
-    authApi.me().then(({ data }) => setUser(data)).catch(() => {
+    authApi.me().then(({ data }) => {
+      setUser(data);
+      localStorage.setItem("pymeet_user", JSON.stringify(data));
+    }).catch(() => {
       localStorage.removeItem("pymeet_token");
+      localStorage.removeItem("pymeet_user");
       setToken(null);
+      setUser(null);
     }).finally(() => setLoading(false));
   }, [token]);
 
@@ -37,12 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login: async (email, password) => {
       const { data } = await authApi.login({ email: email.trim().toLowerCase(), password });
       localStorage.setItem("pymeet_token", data.access_token);
+      localStorage.setItem("pymeet_user", JSON.stringify(data.user));
       setToken(data.access_token);
       setUser(data.user);
     },
     register: async (name, email, password) => {
       const { data } = await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password });
       localStorage.setItem("pymeet_token", data.access_token);
+      localStorage.setItem("pymeet_user", JSON.stringify(data.user));
       setToken(data.access_token);
       setUser(data.user);
     },
@@ -53,10 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (new_password) payload.password = new_password;
       if (reset_token) payload.reset_token = reset_token;
       const { data } = await authApi.updateProfile(payload);
+      localStorage.setItem("pymeet_user", JSON.stringify(data));
       setUser(data);
     },
     logout: () => {
       localStorage.removeItem("pymeet_token");
+      localStorage.removeItem("pymeet_user");
       setToken(null);
       setUser(null);
     }

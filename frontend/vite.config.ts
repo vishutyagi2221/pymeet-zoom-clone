@@ -20,6 +20,17 @@ export default defineConfig({
     port: 5173,
     proxy
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          lucide: ["lucide-react"],
+          framer: ["framer-motion"]
+        }
+      }
+    }
+  },
   preview: {
     host: true,
     port: 5173,
