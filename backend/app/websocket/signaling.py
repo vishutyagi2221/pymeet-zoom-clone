@@ -12,9 +12,12 @@ from app.models.user import User
 from app.services.meeting_service import end_meeting, end_participation, get_meeting
 from app.utils.security import decode_token
 
+origins = settings.frontend_origin.split(",")
+cors_origins = [o.strip() for o in origins] if settings.frontend_origin != "*" else "*"
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",
+    cors_allowed_origins=cors_origins,
     logger=False,
     engineio_logger=False,
 )

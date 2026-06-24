@@ -12,4 +12,4 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: FRONTEND_ORIGIN
-        value: "*" # Change this to your Vercel URL later for better security
+        value: "https://pymeet-zoom-clone.vercel.app,file://" # Restrict to Vercel and local Desktop app

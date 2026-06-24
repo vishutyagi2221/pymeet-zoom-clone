@@ -10,7 +10,8 @@ from app.websocket.signaling import sio
 
 Base.metadata.create_all(bind=engine)
 
-ALLOWED_ORIGINS = ["*"]
+origins = settings.frontend_origin.split(",")
+ALLOWED_ORIGINS = [o.strip() for o in origins] if settings.frontend_origin != "*" else ["*"]
 
 fastapi_app = FastAPI(title=settings.app_name, version="1.0.0")
 fastapi_app.add_middleware(
