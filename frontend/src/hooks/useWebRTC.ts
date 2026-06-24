@@ -685,6 +685,35 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     setRemoteStreams([]);
   }, [meetingId, socket]);
 
+  // Auto-resume media if revoked by OS (e.g. backgrounding on iOS/Android)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === "visible") {
+        const isCameraDead = cameraEnabled && (!cameraTrackRef.current || cameraTrackRef.current.readyState === "ended");
+        const isMicDead = micEnabled && (!audioTrackRef.current || audioTrackRef.current.readyState === "ended");
+
+        if (isCameraDead || isMicDead) {
+          try {
+            // First turn them off in state so the UI reflects the restart
+            if (isCameraDead) setCameraEnabled(false);
+            if (isMicDead) setMicEnabled(false);
+            
+            // Re-request the media entirely
+            await requestMedia();
+            
+            // We don't need to manually replace tracks here because requestMedia() 
+            // already handles replacing the tracks in the peer connections automatically!
+          } catch (err) {
+            console.warn("Could not auto-resume media", err);
+          }
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [cameraEnabled, micEnabled, requestMedia]);
+
   return { 
     localStream, remoteStreams, participants, reactions, micEnabled, cameraEnabled, screenSharing, mediaError, 
     videoDevices, audioInputDevices, audioOutputDevices, 
