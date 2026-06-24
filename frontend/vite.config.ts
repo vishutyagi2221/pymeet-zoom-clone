@@ -15,6 +15,7 @@ const proxy = {
 };
 
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     VitePWA({

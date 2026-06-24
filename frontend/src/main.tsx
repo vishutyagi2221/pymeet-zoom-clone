@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoadingScreen } from "./components/LoadingScreen";
 const Login = React.lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
@@ -26,9 +26,12 @@ function Public({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+const Router = isElectron ? HashRouter : BrowserRouter;
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <Router>
       <ThemeProvider>
         <AuthProvider>
           <React.Suspense fallback={<LoadingScreen />}>
@@ -43,6 +46,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           </React.Suspense>
         </AuthProvider>
       </ThemeProvider>
-    </BrowserRouter>
+    </Router>
   </React.StrictMode>
 );
