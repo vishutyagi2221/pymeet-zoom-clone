@@ -340,7 +340,21 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       const others = joined.filter((p) => p.sid !== socket.id);
       for (const participant of others) await callPeer(participant.sid);
     };
-    const onParticipantList = ({ participants: next }: { participants: RoomParticipant[] }) => updateParticipants(next);
+    const onParticipantList = ({ participants: next }: { participants: RoomParticipant[] }) => {
+      // Preserve existing media states when updating the participant list
+      const merged = next.map(p => {
+        const existing = participantsRef.current.find(ep => ep.sid === p.sid);
+        if (existing) {
+          return {
+            ...p,
+            ...(existing.cameraEnabled !== undefined ? { cameraEnabled: existing.cameraEnabled } : {}),
+            ...(existing.micEnabled !== undefined ? { micEnabled: existing.micEnabled } : {})
+          };
+        }
+        return p;
+      });
+      updateParticipants(merged);
+    };
     const onUserJoined = ({ user }: { user: RoomParticipant }) => { 
       // Inform the new user of our current media state
       const currentCameraState = cameraTrackRef.current ? cameraTrackRef.current.enabled && cameraTrackRef.current.readyState === "live" : false;
