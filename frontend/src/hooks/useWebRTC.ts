@@ -549,15 +549,25 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       if (currentTrack) currentTrack.stop();
       setCameraEnabled(false);
       socket?.emit("media-state", { cameraEnabled: false });
+
+      // ULTIMATE FIX: Also replace the WebRTC track with null so it stops sending the frozen frame entirely.
+      const videoTransceivers = Array.from(peers.current.values()).flatMap((p) => p.getTransceivers()).filter(t => t.receiver.track.kind === "video" || t.sender.track?.kind === "video");
+      for (const t of videoTransceivers) {
+        if (t.sender) await t.sender.replaceTrack(null);
+      }
       return;
     }
 
     try {
       const videoConstraints = await preferredCameraConstraints();
-      const newStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-      const newTrack = newStream.getVideoTracks()[0];
-      if (!newTrack) return;
-
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+      const newTrack = stream.getVideoTracks()[0];
+      
+      const videoTransceivers = Array.from(peers.current.values()).flatMap((p) => p.getTransceivers()).filter(t => t.receiver.track.kind === "video" || t.sender.track?.kind === "video" || !t.sender.track);
+      
+      for (const t of videoTransceivers) {
+        if (newTrack && t.sender) await t.sender.replaceTrack(newTrack);
+      } 
       const audioTracks = localStreamRef.current.getAudioTracks();
       const nextStream = new MediaStream([newTrack, ...audioTracks]);
 
