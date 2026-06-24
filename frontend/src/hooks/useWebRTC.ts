@@ -327,16 +327,28 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       setRemoteStreams([]);
     };
   }, [enabled, meetingId, requestMedia, socket]);
-
   useEffect(() => {
     if (!socket) return;
     const onRoomJoined = async ({ participants: joined }: { participants: RoomParticipant[] }) => {
       updateParticipants(joined);
+      
+      // Broadcast our actual initial media state to everyone in the room
+      const currentCameraState = cameraTrackRef.current ? cameraTrackRef.current.enabled && cameraTrackRef.current.readyState === "live" : false;
+      const currentMicState = audioTrackRef.current ? audioTrackRef.current.enabled : false;
+      socket.emit("media-state", { cameraEnabled: currentCameraState, micEnabled: currentMicState });
+
       const others = joined.filter((p) => p.sid !== socket.id);
       for (const participant of others) await callPeer(participant.sid);
     };
     const onParticipantList = ({ participants: next }: { participants: RoomParticipant[] }) => updateParticipants(next);
-    const onUserJoined = ({ user }: { user: RoomParticipant }) => { if (shouldInitiate(socket.id, user.sid)) void callPeer(user.sid); };
+    const onUserJoined = ({ user }: { user: RoomParticipant }) => { 
+      // Inform the new user of our current media state
+      const currentCameraState = cameraTrackRef.current ? cameraTrackRef.current.enabled && cameraTrackRef.current.readyState === "live" : false;
+      const currentMicState = audioTrackRef.current ? audioTrackRef.current.enabled : false;
+      socket.emit("media-state", { cameraEnabled: currentCameraState, micEnabled: currentMicState });
+      
+      if (shouldInitiate(socket.id, user.sid)) void callPeer(user.sid); 
+    };
     const onOffer = async ({ from, offer }: { from: string; offer: RTCSessionDescriptionInit }) => {
       const pc = createPeer(from);
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
