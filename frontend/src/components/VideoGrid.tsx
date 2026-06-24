@@ -50,6 +50,8 @@ export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remot
           stream={item.stream}
           participant={item.participant}
           active={false}
+          cameraEnabled={item.participant?.cameraEnabled !== false}
+          muted={item.participant?.micEnabled === false}
           audioOutputDeviceId={audioOutputDeviceId}
         />
       ))}

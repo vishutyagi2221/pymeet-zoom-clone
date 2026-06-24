@@ -375,6 +375,18 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
         iceCandidateQueues.current.set(from, queue);
       }
     };
+    const onMediaState = ({ sid, cameraEnabled, micEnabled }: { sid: string; cameraEnabled?: boolean; micEnabled?: boolean }) => {
+      updateParticipants(participantsRef.current.map((p) => {
+        if (p.sid === sid) {
+          return {
+            ...p,
+            ...(cameraEnabled !== undefined ? { cameraEnabled } : {}),
+            ...(micEnabled !== undefined ? { micEnabled } : {}),
+          };
+        }
+        return p;
+      }));
+    };
     const onLeft = ({ sid }: { sid: string }) => {
       const timer = disconnectTimers.current.get(sid);
       if (timer) window.clearTimeout(timer);
@@ -392,6 +404,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
     socket.on("ice-candidate", onIce);
+    socket.on("media-state", onMediaState);
     socket.on("user-left", onLeft);
     return () => {
       socket.off("room-joined", onRoomJoined);
@@ -400,6 +413,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);
       socket.off("ice-candidate", onIce);
+      socket.off("media-state", onMediaState);
       socket.off("user-left", onLeft);
     };
   }, [callPeer, createPeer, socket, updateParticipants]);
@@ -493,7 +507,11 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
 
   const toggleMic = () => {
     if (!localStreamRef.current) { void requestMedia(); return; }
-    localStreamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !track.enabled; setMicEnabled(track.enabled); });
+    localStreamRef.current?.getAudioTracks().forEach((track) => { 
+      track.enabled = !track.enabled; 
+      setMicEnabled(track.enabled); 
+      socket?.emit("media-state", { micEnabled: track.enabled });
+    });
   };
 
   const toggleCamera = async () => {
@@ -504,6 +522,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     if (cameraEnabled) {
       if (currentTrack) currentTrack.stop();
       setCameraEnabled(false);
+      socket?.emit("media-state", { cameraEnabled: false });
       return;
     }
 
@@ -521,6 +540,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       setLocalStream(nextStream);
       setCameraEnabled(true);
       setMediaError(null);
+      socket?.emit("media-state", { cameraEnabled: true });
 
       peers.current.forEach((peer) => {
         const sender = peer.getSenders().find((s) => s.track?.kind === "video");

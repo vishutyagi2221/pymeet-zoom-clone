@@ -34,6 +34,8 @@ export interface RoomParticipant {
   avatar_color: string;
   is_host: boolean;
   is_waiting?: boolean;
+  cameraEnabled?: boolean;
+  micEnabled?: boolean;
 }
 
 export interface ChatMessage {

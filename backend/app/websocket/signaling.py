@@ -178,6 +178,13 @@ async def chat_message(sid: str, data: dict[str, Any]):
         await sio.emit("chat-message", {"message": data.get("message", ""), "user": asdict(user), "sentAt": data.get("sentAt")}, room=meeting_id, skip_sid=sid)
 
 
+@sio.on("media-state")
+async def media_state(sid: str, data: dict[str, Any]):
+    meeting_id = sid_to_room.get(sid)
+    if meeting_id:
+        await sio.emit("media-state", {**data, "sid": sid}, room=meeting_id, skip_sid=sid)
+
+
 @sio.on("remove-participant")
 async def remove_participant(sid: str, data: dict[str, Any]):
     meeting_id = str(data.get("meetingId", "")).upper()

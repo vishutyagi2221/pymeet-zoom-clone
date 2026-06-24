@@ -54,7 +54,7 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
   }, [audioOutputDeviceId]);
 
   const hasVideo = stream && stream.getVideoTracks().some((t) => t.enabled && t.readyState === "live");
-  const showVideo = cameraEnabled && (isLocal ? hasVideo : Boolean(stream));
+  const showVideo = cameraEnabled && hasVideo;
   const initials = (participant?.name || "Guest").split(" ").map((p) => p[0] || "").join("").slice(0, 2).toUpperCase();
 
   return (
