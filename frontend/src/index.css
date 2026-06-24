@@ -48,3 +48,11 @@ body {
     radial-gradient(circle at 85% 10%, rgba(244, 114, 182, 0.14), transparent 24%),
     linear-gradient(135deg, #08111f 0%, #0f172a 48%, #111827 100%);
 }
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
