@@ -84,6 +84,7 @@
 </head>
 <body>
     <h2>Choose what to share</h2>
+    <div id="loading" style="text-align: center; color: #cbd5e1; padding: 40px; font-size: 15px;">Loading screens and windows...</div>
     <div class="grid" id="grid"></div>
     <div class="buttons">
         <button class="btn-cancel" onclick="window.electronAPI.cancelSelection()">Cancel</button>
@@ -92,6 +93,9 @@
     <script>
         window.electronAPI.onSourcesReceived((sources) => {
             const grid = document.getElementById('grid');
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'none';
+
             sources.forEach(source => {
                 const item = document.createElement('div');
                 item.className = 'source-item';

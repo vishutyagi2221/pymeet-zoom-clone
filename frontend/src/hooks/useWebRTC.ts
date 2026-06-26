@@ -698,7 +698,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
 
   } catch (err: any) {
     console.error("Screen sharing failed:", err);
-    if (err.name !== "NotAllowedError") {
+    if (err.name !== "NotAllowedError" && !err.message?.includes("Invalid capture constraints") && !err.message?.includes("InvalidStateError")) {
       alert(`Screen sharing failed: ${err.message || err.name}`);
     }
   }
