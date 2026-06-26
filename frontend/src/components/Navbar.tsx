@@ -16,8 +16,8 @@ export function Navbar() {
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
-  // Check if app is already running in standalone (PWA) mode
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || false;
+  // Check if app is already running in standalone (PWA) mode OR in the Electron Desktop app
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || navigator.userAgent.toLowerCase().includes(' electron/') || false;
 
   useEffect(() => {
     const handler = (e: any) => {
