@@ -467,17 +467,25 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   const selectVideoDevice = useCallback(async (deviceId: string) => {
     if (!deviceId || screenSharing) return;
     try {
-      const cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          deviceId: { exact: deviceId }, 
-          width: { ideal: 3840 }, 
-          height: { ideal: 2160 },
-          frameRate: { ideal: 60 },
-          // @ts-ignore
-          resizeMode: "crop-and-scale"
-        },
-        audio: false,
-      });
+      let cameraStream: MediaStream;
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            deviceId: { exact: deviceId }, 
+            width: { ideal: 3840 }, 
+            height: { ideal: 2160 },
+            frameRate: { ideal: 60 },
+            // @ts-ignore
+            resizeMode: "crop-and-scale"
+          },
+          audio: false,
+        });
+      } catch {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+      }
       const nextTrack = cameraStream.getVideoTracks()[0];
       const previousTrack = cameraTrackRef.current;
       const audioTracks = localStreamRef.current?.getAudioTracks() || [];
@@ -580,7 +588,12 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
 
     try {
       const videoConstraints = await preferredCameraConstraints();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      }
       const newTrack = stream.getVideoTracks()[0];
       
       const videoTransceivers = Array.from(peers.current.values()).flatMap((p) => p.getTransceivers()).filter(t => t.receiver.track.kind === "video" || t.sender.track?.kind === "video" || !t.sender.track);
