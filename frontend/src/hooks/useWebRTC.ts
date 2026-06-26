@@ -157,9 +157,11 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video, audio: audioConstraints });
       } catch {
-        // Fallback if strict constraints fail
+        const fallbackVideo = (typeof video === 'object' && video !== null && 'deviceId' in video) 
+            ? { deviceId: video.deviceId, width: { ideal: 1280 }, height: { ideal: 720 } }
+            : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
         stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, 
+          video: fallbackVideo, 
           audio: baseAudioConstraints 
         });
       }
@@ -592,7 +594,10 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
       } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        const fallbackVideo = (typeof videoConstraints === 'object' && videoConstraints !== null && 'deviceId' in videoConstraints) 
+            ? { deviceId: videoConstraints.deviceId, width: { ideal: 1280 }, height: { ideal: 720 } }
+            : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
+        stream = await navigator.mediaDevices.getUserMedia({ video: fallbackVideo, audio: false });
       }
       const newTrack = stream.getVideoTracks()[0];
       
