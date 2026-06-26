@@ -629,6 +629,15 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   const shareScreen = async () => {
   if (!localStreamRef.current) return;
 
+  if (screenSharing) {
+    const track = localStreamRef.current.getVideoTracks()[0];
+    if (track) {
+      track.stop();
+      track.dispatchEvent(new Event('ended'));
+    }
+    return;
+  }
+
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       alert("Screen sharing is not supported in this browser (or insecure context).");
