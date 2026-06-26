@@ -1,6 +1,7 @@
 services:
   - type: web
     name: pymeet-backend
+    autoDeploy: false
     env: python
     buildCommand: "cd backend && pip install -r requirements.txt"
     startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port 10000"

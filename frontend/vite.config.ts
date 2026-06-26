@@ -4,11 +4,11 @@ import { VitePWA } from "vite-plugin-pwa";
 
 const proxy = {
   "/api": {
-    target: "http://backend:8000",
+    target: process.env.VITE_BACKEND_URL || "http://127.0.0.1:8000",
     changeOrigin: true
   },
   "/socket.io": {
-    target: "http://backend:8000",
+    target: process.env.VITE_BACKEND_URL || "http://127.0.0.1:8000",
     changeOrigin: true,
     ws: true
   }
