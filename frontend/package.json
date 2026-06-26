@@ -18,11 +18,23 @@
       "output": "dist-electron"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/pwa-512x512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PyMeet"
     },
     "files": [
       "dist/**/*",
-      "main.js"
+      "main.js",
+      "picker.html",
+      "picker_preload.js",
+      "stop_bar.html",
+      "stop_bar_preload.js"
     ]
   },
   "dependencies": {

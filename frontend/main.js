@@ -77,7 +77,7 @@ function createWindow() {
         ipcMain.once('SOURCE_SELECTED', (event, sourceId) => {
           sourceSelected = true;
           const selected = sources.find(s => s.id === sourceId);
-          callback({ video: selected, audio: 'loopback' });
+          callback({ video: selected });
           pickerWindow.close();
           cleanupListeners();
 
