@@ -159,7 +159,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       } catch {
         // Fallback if strict constraints fail
         stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } }, 
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, 
           audio: baseAudioConstraints 
         });
       }
