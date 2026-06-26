@@ -2,7 +2,8 @@ import { MessageSquare, Mic, MicOff, MonitorUp, PhoneOff, UserPlus, Users, Video
 import { Button } from "./Button";
 import { ReactionPicker } from "./ReactionPicker";
 
-const supportsScreenShare = typeof navigator !== "undefined" && navigator.mediaDevices && !!navigator.mediaDevices.getDisplayMedia;
+const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const supportsScreenShare = typeof navigator !== "undefined" && navigator.mediaDevices && !!navigator.mediaDevices.getDisplayMedia && !isMobile;
 
 export function MeetingControls({ isHost, micEnabled, cameraEnabled, screenSharing, onToggleMic, onToggleCamera, onShareScreen, onToggleChat, onToggleParticipants, onInvite, onLeave, onSendReaction }: { isHost: boolean; micEnabled: boolean; cameraEnabled: boolean; screenSharing: boolean; onToggleMic: () => void; onToggleCamera: () => void; onShareScreen: () => void; onToggleChat: () => void; onToggleParticipants: () => void; onInvite: () => void; onLeave: () => void; onSendReaction: (emoji: string) => void }) {
   const item = "h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-lg px-0";
