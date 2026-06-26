@@ -25,8 +25,10 @@ export function ReactionPicker({ onSelectReaction }: { onSelectReaction: (emoji:
           {EMOJIS.map((emoji) => (
             <button
               key={emoji}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onSelectReaction(emoji);
+                setIsOpen(false);
               }}
               className="grid h-10 w-10 place-items-center rounded-full text-2xl transition-all hover:scale-125 active:scale-90 focus:outline-none"
             >
@@ -39,7 +41,10 @@ export function ReactionPicker({ onSelectReaction }: { onSelectReaction: (emoji:
         title="Send a reaction"
         variant="secondary"
         className="h-11 w-11 rounded-lg px-0"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
       >
         <SmilePlus size={19} className={isOpen ? "text-primary" : ""} />
       </Button>

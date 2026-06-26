@@ -41,12 +41,25 @@ function createWindow() {
 
   win.setMenuBarVisibility(false);
 
+  win.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
+    import('electron').then(({ desktopCapturer }) => {
+      desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+        // Grant access to the first screen found
+        callback({ video: sources[0], audio: 'loopback' });
+      }).catch((err) => {
+        console.error('Error getting sources:', err);
+        callback(null);
+      });
+    });
+  });
+
   requestPermissions().then(() => {
     if (isDev) {
       win.loadURL('http://localhost:5173');
       win.webContents.openDevTools();
     } else {
-      win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+      // Load the live deployed web app so the desktop app is always up to date!
+      win.loadURL('https://pymeet-zoom-clone.vercel.app');
     }
   });
 
