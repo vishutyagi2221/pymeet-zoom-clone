@@ -3,12 +3,20 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoadingScreen } from "./components/LoadingScreen";
-const Login = React.lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
-const Register = React.lazy(() => import("./pages/Register").then(m => ({ default: m.Register })));
-const Dashboard = React.lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
-const CreateMeeting = React.lazy(() => import("./pages/CreateMeeting").then(m => ({ default: m.CreateMeeting })));
-const JoinMeeting = React.lazy(() => import("./pages/JoinMeeting").then(m => ({ default: m.JoinMeeting })));
-const MeetingRoom = React.lazy(() => import("./pages/MeetingRoom").then(m => ({ default: m.MeetingRoom })));
+const lazyImport = (factory: () => Promise<any>) => React.lazy(() => 
+  factory().catch((error) => {
+    console.error("Chunk load error:", error);
+    window.location.reload();
+    return Promise.reject(error);
+  })
+);
+
+const Login = lazyImport(() => import("./pages/Login").then(m => ({ default: m.Login })));
+const Register = lazyImport(() => import("./pages/Register").then(m => ({ default: m.Register })));
+const Dashboard = lazyImport(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const CreateMeeting = lazyImport(() => import("./pages/CreateMeeting").then(m => ({ default: m.CreateMeeting })));
+const JoinMeeting = lazyImport(() => import("./pages/JoinMeeting").then(m => ({ default: m.JoinMeeting })));
+const MeetingRoom = lazyImport(() => import("./pages/MeetingRoom").then(m => ({ default: m.MeetingRoom })));
 import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 

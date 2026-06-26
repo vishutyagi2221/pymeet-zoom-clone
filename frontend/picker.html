@@ -96,7 +96,20 @@
             const loading = document.getElementById('loading');
             if (loading) loading.style.display = 'none';
 
+            const seenNames = new Set();
+
             sources.forEach(source => {
+                // Remove numbering like "(2) WhatsApp" -> "WhatsApp" to check for duplicates
+                const baseName = source.name.replace(/^\(\d+\)\s*/, '');
+                
+                // Don't show PyMeet itself to avoid infinity mirrors, and ignore duplicates
+                if (baseName.includes('PyMeet') || seenNames.has(baseName)) {
+                    return;
+                }
+                
+                // Add to seen so we only show one window per application
+                seenNames.add(baseName);
+
                 const item = document.createElement('div');
                 item.className = 'source-item';
                 item.onclick = () => window.electronAPI.selectSource(source.id);
@@ -105,7 +118,7 @@
                 img.src = source.thumbnail;
                 
                 const label = document.createElement('span');
-                label.innerText = source.name;
+                label.innerText = baseName;
                 
                 item.appendChild(img);
                 item.appendChild(label);

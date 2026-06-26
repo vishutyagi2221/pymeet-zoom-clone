@@ -128,6 +128,11 @@ function createWindow() {
     `).catch(err => console.log(err));
   });
 
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    import('electron').then(({ shell }) => shell.openExternal(url));
+    return { action: 'deny' };
+  });
+
   requestPermissions().then(() => {
     if (isDev) {
       win.loadURL('http://localhost:5173');
