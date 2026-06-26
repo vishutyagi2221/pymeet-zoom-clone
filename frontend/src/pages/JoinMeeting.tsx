@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { FormEvent, useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -7,8 +7,16 @@ import { meetingApi } from "../services/api";
 
 export function JoinMeeting() {
   const navigate = useNavigate();
-  const [meetingId, setMeetingId] = useState("");
+  const { meetingId: urlMeetingId } = useParams();
+  const [meetingId, setMeetingId] = useState(urlMeetingId || "");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (urlMeetingId) {
+      setMeetingId(urlMeetingId.toUpperCase());
+    }
+  }, [urlMeetingId]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError("");
     try { const { data } = await meetingApi.join(meetingId); navigate(`/meeting/${data.meeting_id}`); } catch { setError("Meeting not found or no longer active."); }

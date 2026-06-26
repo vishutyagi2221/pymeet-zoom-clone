@@ -141,7 +141,7 @@ function createWindow() {
   });
 
   win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowedPermissions = ['media', 'camera', 'microphone', 'display-capture'];
+    const allowedPermissions = ['media', 'camera', 'microphone', 'display-capture', 'clipboard-read', 'clipboard-write', 'clipboard-sanitized-write'];
     if (allowedPermissions.includes(permission)) {
       callback(true);
     } else {

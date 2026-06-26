@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Video } from "lucide-react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,7 +28,8 @@ export function Register() {
     setBusy(true);
     try {
       await register(form.name, form.email, form.password);
-      navigate("/");
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
     } catch (err: any) {
       const detail = err.response?.data?.detail;
       const message = typeof detail === "string"

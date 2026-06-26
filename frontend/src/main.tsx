@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoadingScreen } from "./components/LoadingScreen";
 const Login = React.lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
@@ -14,15 +14,17 @@ import "./index.css";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   return <>{children}</>;
 }
 
 function Public({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingScreen />;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={location.state?.from?.pathname || "/"} replace />;
   return <>{children}</>;
 }
 
@@ -41,6 +43,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Protected><Dashboard /></Protected>} />
               <Route path="/create" element={<Protected><CreateMeeting /></Protected>} />
               <Route path="/join" element={<Protected><JoinMeeting /></Protected>} />
+              <Route path="/join/:meetingId" element={<Protected><JoinMeeting /></Protected>} />
               <Route path="/meeting/:meetingId" element={<Protected><MeetingRoom /></Protected>} />
             </Routes>
           </React.Suspense>
