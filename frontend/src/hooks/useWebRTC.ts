@@ -633,7 +633,11 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     const track = localStreamRef.current.getVideoTracks()[0];
     if (track) {
       track.stop();
-      track.dispatchEvent(new Event('ended'));
+      if (typeof track.onended === 'function') {
+        track.onended(new Event('ended'));
+      } else {
+        track.dispatchEvent(new Event('ended'));
+      }
     }
     return;
   }
