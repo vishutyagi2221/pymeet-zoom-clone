@@ -1,4 +1,4 @@
-import { app, BrowserWindow, systemPreferences } from 'electron';
+import { app, BrowserWindow, systemPreferences, ipcMain, screen } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -41,34 +41,84 @@ function createWindow() {
 
   win.setMenuBarVisibility(false);
 
+  let stopBarWindow = null;
+
   win.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
-    import('electron').then(({ desktopCapturer, Menu }) => {
-      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-        let sourceSelected = false;
-        const menu = Menu.buildFromTemplate(
-          sources.map(source => ({
-            label: source.name,
-            click: () => {
-              sourceSelected = true;
-              callback({ video: source, audio: 'loopback' });
-            }
-          }))
-        );
-        
-        menu.on('menu-will-close', () => {
-          setTimeout(() => {
-            if (!sourceSelected) {
-              callback(null); // Cancel the request if clicked outside
-            }
-          }, 100);
+    import('electron').then(({ desktopCapturer }) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 300, height: 300 } }).then((sources) => {
+        const pickerWindow = new BrowserWindow({
+          parent: win,
+          modal: true,
+          width: 800,
+          height: 600,
+          title: "Choose what to share",
+          autoHideMenuBar: true,
+          webPreferences: {
+            preload: path.join(__dirname, 'picker_preload.js'),
+            contextIsolation: true
+          }
+        });
+        pickerWindow.loadFile(path.join(__dirname, 'picker.html'));
+
+        pickerWindow.webContents.on('did-finish-load', () => {
+          const serialized = sources.map(s => ({
+            id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL()
+          }));
+          pickerWindow.webContents.send('SET_SOURCES', serialized);
         });
 
-        menu.popup();
-      }).catch((err) => {
-        console.error('Error getting sources:', err);
+        let sourceSelected = false;
+
+        const cleanupListeners = () => {
+          ipcMain.removeAllListeners('SOURCE_SELECTED');
+          ipcMain.removeAllListeners('SOURCE_CANCELLED');
+        };
+
+        ipcMain.once('SOURCE_SELECTED', (event, sourceId) => {
+          sourceSelected = true;
+          const selected = sources.find(s => s.id === sourceId);
+          callback({ video: selected, audio: 'loopback' });
+          pickerWindow.close();
+          cleanupListeners();
+
+          // Open Stop Bar
+          if (stopBarWindow) stopBarWindow.close();
+          stopBarWindow = new BrowserWindow({
+            width: 320, height: 40, alwaysOnTop: true, frame: false, resizable: false,
+            webPreferences: { preload: path.join(__dirname, 'stop_bar_preload.js'), contextIsolation: true }
+          });
+          const display = screen.getPrimaryDisplay();
+          stopBarWindow.setPosition(Math.floor((display.workAreaSize.width - 320) / 2), display.workAreaSize.height - 60);
+          stopBarWindow.loadFile(path.join(__dirname, 'stop_bar.html'));
+        });
+
+        ipcMain.once('SOURCE_CANCELLED', () => {
+          sourceSelected = true;
+          callback(null);
+          pickerWindow.close();
+          cleanupListeners();
+        });
+
+        pickerWindow.on('closed', () => {
+          if (!sourceSelected) {
+            callback(null);
+            cleanupListeners();
+          }
+        });
+      }).catch(err => {
+        console.error('Error:', err);
         callback(null);
       });
     });
+  });
+
+  ipcMain.on('STOP_SHARING', () => {
+    if (stopBarWindow) { stopBarWindow.close(); stopBarWindow = null; }
+    win.webContents.executeJavaScript(`
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const shareBtn = buttons.find(b => b.title === 'Share Screen' || b.innerHTML.includes('lucide-monitor-up'));
+      if (shareBtn) shareBtn.click();
+    `).catch(err => console.log(err));
   });
 
   requestPermissions().then(() => {
