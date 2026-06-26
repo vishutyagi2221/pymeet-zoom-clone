@@ -45,7 +45,7 @@ function createWindow() {
 
   win.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
     import('electron').then(({ desktopCapturer }) => {
-      desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 300, height: 300 } }).then((sources) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 150, height: 150 } }).then((sources) => {
         const pickerWindow = new BrowserWindow({
           parent: win,
           modal: true,
@@ -84,11 +84,11 @@ function createWindow() {
           // Open Stop Bar
           if (stopBarWindow) stopBarWindow.close();
           stopBarWindow = new BrowserWindow({
-            width: 320, height: 40, alwaysOnTop: true, frame: false, resizable: false,
+            width: 360, height: 60, alwaysOnTop: true, frame: false, resizable: false, transparent: true,
             webPreferences: { preload: path.join(__dirname, 'stop_bar_preload.js'), contextIsolation: true }
           });
           const display = screen.getPrimaryDisplay();
-          stopBarWindow.setPosition(Math.floor((display.workAreaSize.width - 320) / 2), display.workAreaSize.height - 60);
+          stopBarWindow.setPosition(Math.floor((display.workAreaSize.width - 360) / 2), display.workAreaSize.height - 150);
           stopBarWindow.loadFile(path.join(__dirname, 'stop_bar.html'));
         });
 
