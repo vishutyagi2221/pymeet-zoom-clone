@@ -20,6 +20,14 @@
       }
       @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
+    <script>
+      (function() {
+        const saved = localStorage.getItem("pymeet-theme");
+        if (saved === "dark" || !saved) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root">
