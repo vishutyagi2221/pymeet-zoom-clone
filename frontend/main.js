@@ -42,10 +42,28 @@ function createWindow() {
   win.setMenuBarVisibility(false);
 
   win.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
-    import('electron').then(({ desktopCapturer }) => {
-      desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
-        // Grant access to the first screen found
-        callback({ video: sources[0], audio: 'loopback' });
+    import('electron').then(({ desktopCapturer, Menu }) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        let sourceSelected = false;
+        const menu = Menu.buildFromTemplate(
+          sources.map(source => ({
+            label: source.name,
+            click: () => {
+              sourceSelected = true;
+              callback({ video: source, audio: 'loopback' });
+            }
+          }))
+        );
+        
+        menu.on('menu-will-close', () => {
+          setTimeout(() => {
+            if (!sourceSelected) {
+              callback(null); // Cancel the request if clicked outside
+            }
+          }, 100);
+        });
+
+        menu.popup();
       }).catch((err) => {
         console.error('Error getting sources:', err);
         callback(null);
@@ -58,8 +76,10 @@ function createWindow() {
       win.loadURL('http://localhost:5173');
       win.webContents.openDevTools();
     } else {
-      // Load the live deployed web app so the desktop app is always up to date!
-      win.loadURL('https://pymeet-zoom-clone.vercel.app');
+      // Clear cache so chunk load errors don't happen after Vercel deployments!
+      win.webContents.session.clearCache().then(() => {
+        win.loadURL('https://pymeet-zoom-clone.vercel.app');
+      });
     }
   });
 
