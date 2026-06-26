@@ -187,7 +187,17 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
           currentTrack.stop();
           stream = new MediaStream([...physicalStream.getVideoTracks(), ...stream.getAudioTracks()]);
         } catch {
-          // The camera picker remains available if automatic switching is blocked.
+          try {
+            // Fallback to relaxed constraints if 4K strict constraints fail
+            const relaxedPhysicalStream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: physicalCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+              audio: false,
+            });
+            currentTrack.stop();
+            stream = new MediaStream([...relaxedPhysicalStream.getVideoTracks(), ...stream.getAudioTracks()]);
+          } catch {
+            // The camera picker remains available if automatic switching is blocked.
+          }
         }
       }
 
