@@ -34,8 +34,9 @@ export interface RoomParticipant {
   avatar_color: string;
   is_host: boolean;
   is_waiting?: boolean;
-  cameraEnabled?: boolean;
-  micEnabled?: boolean;
+  camera_enabled?: boolean;
+  mic_enabled?: boolean;
+  screen_sharing?: boolean;
 }
 
 export interface ChatMessage {
@@ -43,13 +44,12 @@ export interface ChatMessage {
   message: string;
   user: RoomParticipant;
   sentAt: string;
-  isPrivate?: boolean;
-  targetUser?: RoomParticipant;
 }
 
-export interface Reaction {
+export interface ReactionEvent {
   id: string;
-  sid: string;
   emoji: string;
-  timestamp: number;
+  sid: string;
+  user: RoomParticipant;
+  sentAt: string;
 }

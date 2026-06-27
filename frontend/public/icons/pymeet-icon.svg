@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PyMeet">
+  <rect width="512" height="512" rx="112" fill="#0a0f1f"/>
+  <rect x="88" y="154" width="232" height="204" rx="48" fill="#22d3ee"/>
+  <path d="M320 222l104-58v184l-104-58z" fill="#f472b6"/>
+  <circle cx="184" cy="256" r="34" fill="#0f172a"/>
+  <path d="M154 318c16-28 84-28 100 0" fill="none" stroke="#0f172a" stroke-width="24" stroke-linecap="round"/>
+</svg>

@@ -1,7 +1,6 @@
 import { MicOff, MonitorUp, VideoOff } from "lucide-react";
 import { memo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import type { RoomParticipant, Reaction } from "../types";
+import type { RoomParticipant } from "../types";
 
 interface VideoTileProps {
   stream: MediaStream | null;
@@ -11,11 +10,9 @@ interface VideoTileProps {
   cameraEnabled?: boolean;
   active?: boolean;
   screen?: boolean;
-  audioOutputDeviceId?: string;
-  reactions?: Reaction[];
 }
 
-export const VideoTile = memo(function VideoTile({ stream, participant, isLocal = false, muted = false, cameraEnabled = true, active = false, screen = false, audioOutputDeviceId, reactions = [] }: VideoTileProps) {
+export const VideoTile = memo(function VideoTile({ stream, participant, isLocal = false, muted = false, cameraEnabled = true, active = false, screen = false }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -24,7 +21,7 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
 
     if (stream) {
       video.srcObject = stream;
-      video.play().catch(() => {/* autoplay blocked — user interaction needed */});
+      video.play().catch(() => {});
     } else {
       video.srcObject = null;
     }
@@ -45,18 +42,9 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
     };
   }, [stream]);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !audioOutputDeviceId || typeof (video as any).setSinkId !== "function") return;
-    
-    // setSinkId routes the audio to the selected speaker
-    (video as any).setSinkId(audioOutputDeviceId).catch((err: any) => {
-      console.warn("Error setting audio output device:", err);
-    });
-  }, [audioOutputDeviceId]);
-
-  const hasVideo = stream && stream.getVideoTracks().some((t) => t.enabled && t.readyState === "live");
-  const showVideo = cameraEnabled && hasVideo;
+  const hasVideo = Boolean(stream?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"));
+  const showVideo = (screen || cameraEnabled) && hasVideo;
+  const objectFitClass = screen ? "object-contain bg-black" : "object-cover";
   const initials = (participant?.name || "Guest").split(" ").map((p) => p[0] || "").join("").slice(0, 2).toUpperCase();
 
   return (
@@ -68,18 +56,10 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
         autoPlay
         playsInline
         muted={muted}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${showVideo && !(isLocal && screen) ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${objectFitClass} ${showVideo ? "opacity-100" : "opacity-0"}`}
         style={isLocal && !screen ? { transform: "scaleX(-1)" } : undefined}
       />
-      {isLocal && screen ? (
-        <div className="z-10 flex flex-col items-center gap-3 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-full bg-slate-800/80 text-cyan-400 border border-slate-700 shadow-lg">
-            <MonitorUp size={28} />
-          </div>
-          <span className="text-sm font-medium text-slate-200">You are sharing your screen</span>
-          <span className="max-w-[200px] text-xs text-slate-400">Everyone can see your screen.</span>
-        </div>
-      ) : !showVideo && (
+      {!showVideo && (
         <div className="z-10 flex flex-col items-center gap-2">
           <div
             className="grid h-16 w-16 place-items-center rounded-full text-xl font-bold text-white sm:h-20 sm:w-20 sm:text-2xl"
@@ -90,33 +70,6 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
           <span className="text-xs text-slate-400">{isLocal ? "Camera off" : participant?.name || ""}</span>
         </div>
       )}
-
-      {/* Floating Reactions Overlay */}
-      <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-        <AnimatePresence>
-          {reactions.map((reaction) => {
-            // Generate stable random paths based on the reaction ID
-            const seed = parseInt(reaction.id, 36) || Math.random() * 1000;
-            const startX = (seed % 100) - 50; // Random start between -50px and 50px
-            const endX = startX + ((seed % 200) - 100); // Drift outwards randomly up to 100px left or right
-            const duration = 2 + (seed % 10) / 10; // Random duration between 2.0s and 2.9s
-            
-            return (
-              <motion.div
-                key={reaction.id}
-                initial={{ opacity: 0, y: 50, scale: 0.5, x: startX }}
-                animate={{ opacity: [0, 1, 1, 0], y: -200, scale: [0.5, 1.5, 1.8, 2], x: endX }}
-                transition={{ duration: duration, ease: "easeOut" }}
-                className="absolute bottom-10 left-1/2 text-4xl drop-shadow-2xl"
-                style={{ originX: 0.5, originY: 1, marginLeft: "-18px" }}
-              >
-                {reaction.emoji}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-white">
         <span className="rounded-md bg-black/50 px-2 py-0.5 text-xs font-medium backdrop-blur-sm">
           {isLocal ? "You" : participant?.name || "Participant"}

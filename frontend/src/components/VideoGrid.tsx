@@ -4,15 +4,13 @@ import { VideoTile } from "./VideoTile";
 
 interface VideoGridProps {
   localStream: MediaStream | null;
-  localUser: RoomParticipant | undefined;
+  localUser?: RoomParticipant;
   remoteStreams: Array<{ sid: string; stream: MediaStream; participant?: RoomParticipant }>;
   cameraEnabled: boolean;
   screenSharing: boolean;
-  audioOutputDeviceId: string;
-  reactions?: import("../types").Reaction[];
 }
 
-export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remoteStreams, cameraEnabled, screenSharing, audioOutputDeviceId, reactions = [] }: VideoGridProps) {
+export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remoteStreams, cameraEnabled, screenSharing }: VideoGridProps) {
   const total = remoteStreams.length + 1;
 
   // Zoom-like grid columns based on participant count
@@ -37,27 +35,22 @@ export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remot
   return (
     <div className={`grid h-full auto-rows-fr gap-2 p-1 ${gridClass} ${sizeClass} items-center content-center`}>
       <VideoTile
-        key="local"
         stream={localStream}
         participant={localUser}
         isLocal
-        muted={true}
+        muted
         cameraEnabled={cameraEnabled}
-        active={false}
+        active={total === 1}
         screen={screenSharing}
-        audioOutputDeviceId={audioOutputDeviceId}
-        reactions={reactions.filter(r => r.sid === localUser?.sid)}
       />
       {remoteStreams.map((item) => (
         <VideoTile
           key={item.sid}
           stream={item.stream}
           participant={item.participant}
+          cameraEnabled={(item.participant?.camera_enabled ?? true) || Boolean(item.participant?.screen_sharing)}
           active={false}
-          cameraEnabled={item.participant?.cameraEnabled !== false}
-          muted={item.participant?.micEnabled === false}
-          audioOutputDeviceId={audioOutputDeviceId}
-          reactions={reactions.filter(r => r.sid === item.sid)}
+          screen={item.participant?.screen_sharing ?? false}
         />
       ))}
     </div>

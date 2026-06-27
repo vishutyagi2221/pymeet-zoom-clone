@@ -1,5 +1,6 @@
+import axios from "axios";
 import { FormEvent, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Video } from "lucide-react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -8,7 +9,6 @@ import { useAuth } from "../context/AuthContext";
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,14 +28,17 @@ export function Register() {
     setBusy(true);
     try {
       await register(form.name, form.email, form.password);
-      const from = location.state?.from?.pathname || "/";
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
+      navigate("/");
+    } catch (err) {
+      if (!axios.isAxiosError(err) || !err.response) {
+        setError("Cannot connect to PyMeet. Open the HTTPS link and check your network.");
+        return;
+      }
+      const detail = err.response.data?.detail;
       const message = typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-          ? detail.map((item: any) => item?.msg).filter(Boolean).join(" ")
+          ? detail.map((item) => item?.msg).filter(Boolean).join(" ")
           : "Unable to create account. Please try again.";
       setError(message);
     } finally {

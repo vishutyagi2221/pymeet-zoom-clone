@@ -3,38 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#050914" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>PyMeet - Modern Video Conferencing</title>
-    <style>
-      body { margin: 0; padding: 0; background-color: #020617; } /* bg-ink equivalent */
-      .instant-loader {
-        position: fixed; inset: 0; display: grid; place-items: center; background-color: #020617; z-index: 9999;
-      }
-      .spinner {
-        width: 48px; height: 48px; border-radius: 50%;
-        border: 2px solid #67e8f9; /* cyan-300 */
-        border-top-color: transparent;
-        animation: spin 1.2s linear infinite;
-      }
-      @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
-    <script>
-      (function() {
-        const saved = localStorage.getItem("pymeet-theme");
-        if (saved === "dark" || !saved) {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
+    <meta name="theme-color" content="#0a0f1f" />
+    <meta name="description" content="Fast, secure video meetings with chat, reactions, waiting rooms, and screen sharing." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="PyMeet" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/pymeet-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/pymeet-icon-192.png" />
+    <title>PyMeet</title>
   </head>
   <body>
-    <div id="root">
-      <div class="instant-loader">
-        <div class="spinner"></div>
-      </div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { RoomParticipant, Reaction } from "../types";
+import type { RoomParticipant } from "../types";
+import { getStoredValue, setStoredValue } from "../utils/storage";
 
 interface RemoteStream {
   sid: string;
@@ -26,148 +27,90 @@ const shouldInitiate = (localSid: string | undefined, remoteSid: string) => Bool
 const VIRTUAL_CAMERA_PATTERN = /phone|mobile|virtual|phone link|link to windows|continuity|droidcam|iriun|obs/i;
 const PHYSICAL_CAMERA_PATTERN = /integrated|webcam|usb|hd camera|facetime/i;
 const CAMERA_STORAGE_KEY = "pymeet-camera-device-id";
-const MIC_STORAGE_KEY = "pymeet-mic-device-id";
-const SPEAKER_STORAGE_KEY = "pymeet-speaker-device-id";
 
 async function preferredCameraConstraints(): Promise<MediaTrackConstraints | boolean> {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cameras = devices.filter((device) => device.kind === "videoinput");
-    const savedCameraId = window.localStorage.getItem(CAMERA_STORAGE_KEY);
+    const savedCameraId = getStoredValue(CAMERA_STORAGE_KEY);
     const savedCamera = cameras.find((device) => device.deviceId === savedCameraId);
     const physicalCamera = savedCamera || cameras.find((device) =>
       PHYSICAL_CAMERA_PATTERN.test(device.label) && !VIRTUAL_CAMERA_PATTERN.test(device.label)
     ) || cameras.find((device) => !VIRTUAL_CAMERA_PATTERN.test(device.label));
 
     if (physicalCamera?.deviceId) {
-      return { 
-        deviceId: { exact: physicalCamera.deviceId }, 
-        width: { ideal: 3840 }, 
-        height: { ideal: 2160 },
-        frameRate: { ideal: 60 },
-        // @ts-ignore
-        resizeMode: "crop-and-scale"
-      };
+      return { deviceId: { exact: physicalCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } };
     }
   } catch {
     // Device labels may be hidden until the first permission grant.
   }
 
-  return { 
-    facingMode: "user", 
-    width: { ideal: 3840 }, 
-    height: { ideal: 2160 },
-    frameRate: { ideal: 60 },
-    // @ts-ignore
-    resizeMode: "crop-and-scale"
-  };
+  return { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
 }
 
 export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boolean) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
-  const [reactions, setReactions] = useState<Reaction[]>([]);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
-  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
-  
   const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState("");
-  const [selectedAudioInputId, setSelectedAudioInputId] = useState("");
-  const [selectedAudioOutputId, setSelectedAudioOutputId] = useState("");
-  const [newDeviceConnected, setNewDeviceConnected] = useState<MediaDeviceInfo | null>(null);
-
   const peers = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const videoSenders = useRef<Map<string, RTCRtpSender>>(new Map());
   const participantsRef = useRef<RoomParticipant[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
-  const audioTrackRef = useRef<MediaStreamTrack | null>(null);
-  const previousDevicesRef = useRef<MediaDeviceInfo[]>([]);
+  const screenTrackRef = useRef<MediaStreamTrack | null>(null);
+  const cameraEnabledRef = useRef(true);
+  const micEnabledRef = useRef(true);
   const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const disconnectTimers = useRef<Map<string, number>>(new Map());
   const restartAttempts = useRef<Map<string, number>>(new Map());
 
-  const updateDeviceList = useCallback(async (isInitial = false) => {
-    if (!navigator.mediaDevices?.enumerateDevices) return null;
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const video = devices.filter((d) => d.kind === "videoinput");
-      const audioIn = devices.filter((d) => d.kind === "audioinput");
-      const audioOut = devices.filter((d) => d.kind === "audiooutput");
-
-      setVideoDevices(video);
-      setAudioInputDevices(audioIn);
-      setAudioOutputDevices(audioOut);
-
-      if (!isInitial) {
-        const prevIds = new Set(previousDevicesRef.current.map((d) => d.deviceId));
-        const newDevice = devices.find((d) => 
-          !prevIds.has(d.deviceId) && 
-          d.deviceId && 
-          d.deviceId !== "default" && 
-          d.deviceId !== "communications" && 
-          (d.kind === "audioinput" || d.kind === "audiooutput")
-        );
-        if (newDevice) {
-          setNewDeviceConnected(newDevice);
-          setTimeout(() => setNewDeviceConnected(null), 8000);
-        }
-      }
-      previousDevicesRef.current = devices;
-      return { video, audioIn, audioOut };
-    } catch { return null; }
+  const updateCameraEnabled = useCallback((enabled: boolean) => {
+    cameraEnabledRef.current = enabled;
+    setCameraEnabled(enabled);
   }, []);
 
-  useEffect(() => {
-    const handler = () => void updateDeviceList();
-    navigator.mediaDevices?.addEventListener("devicechange", handler);
-    return () => navigator.mediaDevices?.removeEventListener("devicechange", handler);
-  }, [updateDeviceList]);
+  const updateMicEnabled = useCallback((enabled: boolean) => {
+    micEnabledRef.current = enabled;
+    setMicEnabled(enabled);
+  }, []);
+
+  const emitMediaState = useCallback((state: { cameraEnabled?: boolean; micEnabled?: boolean; screenSharing?: boolean }) => {
+    socket?.emit("media-state", state);
+  }, [socket]);
+
+  const replaceVideoTrackForPeer = useCallback((sid: string, peer: RTCPeerConnection, track: MediaStreamTrack | null, stream?: MediaStream) => {
+    const sender = videoSenders.current.get(sid) || peer.getSenders().find((item) => item.track?.kind === "video");
+    if (sender) {
+      videoSenders.current.set(sid, sender);
+      void sender.replaceTrack(track);
+      return;
+    }
+
+    if (track && stream) {
+      videoSenders.current.set(sid, peer.addTrack(track, stream));
+    }
+  }, []);
 
   const requestMedia = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setMediaError("Camera and microphone require a secure HTTPS connection.");
-      setCameraEnabled(false);
-      setMicEnabled(false);
+      updateCameraEnabled(false);
+      updateMicEnabled(false);
+      emitMediaState({ cameraEnabled: false, micEnabled: false });
       return false;
     }
 
     try {
       const video = await preferredCameraConstraints();
-      const savedMicId = window.localStorage.getItem(MIC_STORAGE_KEY);
-      
-      const baseAudioConstraints = {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        sampleRate: 48000,
-        channelCount: 1,
-      };
-      
-      const audioConstraints = savedMicId 
-        ? { ...baseAudioConstraints, deviceId: { exact: savedMicId } } 
-        : baseAudioConstraints;
-      
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video, audio: audioConstraints });
-      } catch {
-        const fallbackVideo = (typeof video === 'object' && video !== null && 'deviceId' in video) 
-            ? { deviceId: video.deviceId, width: { ideal: 1280 }, height: { ideal: 720 } }
-            : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: fallbackVideo, 
-          audio: baseAudioConstraints 
-        });
-      }
-
-      const deviceLists = await updateDeviceList(true);
-      const availableCameras = deviceLists?.video || [];
+      let stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
+      const availableCameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "videoinput");
+      setVideoDevices(availableCameras);
 
       const currentTrack = stream.getVideoTracks()[0];
       const physicalCamera = availableCameras.find((device) =>
@@ -176,49 +119,35 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       if (currentTrack && physicalCamera && VIRTUAL_CAMERA_PATTERN.test(currentTrack.label) && physicalCamera.deviceId !== currentTrack.getSettings().deviceId) {
         try {
           const physicalStream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-              deviceId: { exact: physicalCamera.deviceId }, 
-              width: { ideal: 3840 }, 
-              height: { ideal: 2160 },
-              frameRate: { ideal: 60 },
-              // @ts-ignore
-              resizeMode: "crop-and-scale"
-            },
+            video: { deviceId: { exact: physicalCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
             audio: false,
           });
           currentTrack.stop();
           stream = new MediaStream([...physicalStream.getVideoTracks(), ...stream.getAudioTracks()]);
         } catch {
-          try {
-            // Fallback to relaxed constraints if 4K strict constraints fail
-            const relaxedPhysicalStream = await navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: physicalCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
-              audio: false,
-            });
-            currentTrack.stop();
-            stream = new MediaStream([...relaxedPhysicalStream.getVideoTracks(), ...stream.getAudioTracks()]);
-          } catch {
-            // The camera picker remains available if automatic switching is blocked.
-          }
+          // The camera picker remains available if automatic switching is blocked.
         }
       }
 
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
       localStreamRef.current = stream;
       cameraTrackRef.current = stream.getVideoTracks()[0] || null;
-      audioTrackRef.current = stream.getAudioTracks()[0] || null;
-      
       setSelectedVideoDeviceId(cameraTrackRef.current?.getSettings().deviceId || "");
-      setSelectedAudioInputId(audioTrackRef.current?.getSettings().deviceId || savedMicId || "");
-      setSelectedAudioOutputId(window.localStorage.getItem(SPEAKER_STORAGE_KEY) || "");
-      
       setLocalStream(stream);
-      setMicEnabled(stream.getAudioTracks().some((track) => track.enabled));
-      setCameraEnabled(stream.getVideoTracks().some((track) => track.enabled));
+      const nextMicEnabled = stream.getAudioTracks().some((track) => track.enabled);
+      const nextCameraEnabled = stream.getVideoTracks().some((track) => track.enabled);
+      updateMicEnabled(nextMicEnabled);
+      updateCameraEnabled(nextCameraEnabled);
+      emitMediaState({ cameraEnabled: nextCameraEnabled, micEnabled: nextMicEnabled });
       setMediaError(null);
 
-      peers.current.forEach((peer) => {
+      peers.current.forEach((peer, sid) => {
         stream.getTracks().forEach((track) => {
+          if (track.kind === "video") {
+            replaceVideoTrackForPeer(sid, peer, track, stream);
+            return;
+          }
+
           const sender = peer.getSenders().find((item) => item.track?.kind === track.kind);
           if (sender) void sender.replaceTrack(track);
           else peer.addTrack(track, stream);
@@ -233,11 +162,12 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
         if (error.name === "NotReadableError") message = "Camera or microphone is already in use by another application.";
       }
       setMediaError(message);
-      setCameraEnabled(false);
-      setMicEnabled(false);
+      updateCameraEnabled(false);
+      updateMicEnabled(false);
+      emitMediaState({ cameraEnabled: false, micEnabled: false });
       return false;
     }
-  }, []);
+  }, [emitMediaState, replaceVideoTrackForPeer, updateCameraEnabled, updateMicEnabled]);
 
   const updateParticipants = useCallback((next: RoomParticipant[]) => {
     participantsRef.current = next;
@@ -250,7 +180,18 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     const existing = peers.current.get(targetSid);
     if (existing) return existing;
     const pc = new RTCPeerConnection(ICE_SERVERS);
-    localStreamRef.current?.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current as MediaStream));
+    let hasVideoSender = false;
+    localStreamRef.current?.getTracks().forEach((track) => {
+      const sender = pc.addTrack(track, localStreamRef.current as MediaStream);
+      if (track.kind === "video") {
+        videoSenders.current.set(targetSid, sender);
+        hasVideoSender = true;
+      }
+    });
+    if (!hasVideoSender) {
+      const transceiver = pc.addTransceiver("video", { direction: "sendrecv" });
+      videoSenders.current.set(targetSid, transceiver.sender);
+    }
     pc.onicecandidate = (event) => {
       if (event.candidate) socket.emit("ice-candidate", { to: targetSid, candidate: event.candidate });
     };
@@ -296,6 +237,7 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       } else if (state === "failed") {
         void restartIce();
       } else if (state === "closed") {
+        videoSenders.current.delete(targetSid);
         setRemoteStreams((current) => current.filter((item) => item.sid !== targetSid));
       }
     };
@@ -317,19 +259,22 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     let cancelled = false;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("Media devices not supported (likely due to insecure HTTP context). Joining without media.");
-      setCameraEnabled(false);
-      setMicEnabled(false);
-      socket.emit("join-room", { meetingId });
+      updateCameraEnabled(false);
+      updateMicEnabled(false);
+      socket.emit("join-room", { meetingId, media: { cameraEnabled: false, micEnabled: false, screenSharing: false } });
       return;
     }
 
     requestMedia().finally(() => {
-      if (!cancelled) socket.emit("join-room", { meetingId });
+      if (!cancelled) socket.emit("join-room", { meetingId, media: { cameraEnabled: cameraEnabledRef.current, micEnabled: micEnabledRef.current, screenSharing: false } });
     });
 
     return () => {
       cancelled = true;
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      screenTrackRef.current?.stop();
+      screenTrackRef.current = null;
+      setScreenSharing(false);
       setLocalStream(null);
       disconnectTimers.current.forEach((timer) => window.clearTimeout(timer));
       disconnectTimers.current.clear();
@@ -337,44 +282,27 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       iceCandidateQueues.current.clear();
       peers.current.forEach((peer) => peer.close());
       peers.current.clear();
+      videoSenders.current.clear();
       setRemoteStreams([]);
     };
-  }, [enabled, meetingId, requestMedia, socket]);
+  }, [enabled, meetingId, requestMedia, socket, updateCameraEnabled, updateMicEnabled]);
+
   useEffect(() => {
     if (!socket) return;
     const onRoomJoined = async ({ participants: joined }: { participants: RoomParticipant[] }) => {
       updateParticipants(joined);
-      
-      // Broadcast our actual initial media state to everyone in the room
-      const currentCameraState = cameraTrackRef.current ? cameraTrackRef.current.enabled && cameraTrackRef.current.readyState === "live" : false;
-      const currentMicState = audioTrackRef.current ? audioTrackRef.current.enabled : false;
-      socket.emit("media-state", { cameraEnabled: currentCameraState, micEnabled: currentMicState });
-
       const others = joined.filter((p) => p.sid !== socket.id);
       for (const participant of others) await callPeer(participant.sid);
     };
-    const onParticipantList = ({ participants: next }: { participants: RoomParticipant[] }) => {
-      // Preserve existing media states when updating the participant list
-      const merged = next.map(p => {
-        const existing = participantsRef.current.find(ep => ep.sid === p.sid);
-        if (existing) {
-          return {
-            ...p,
-            ...(existing.cameraEnabled !== undefined ? { cameraEnabled: existing.cameraEnabled } : {}),
-            ...(existing.micEnabled !== undefined ? { micEnabled: existing.micEnabled } : {})
-          };
-        }
-        return p;
-      });
-      updateParticipants(merged);
-    };
-    const onUserJoined = ({ user }: { user: RoomParticipant }) => { 
-      // Inform the new user of our current media state
-      const currentCameraState = cameraTrackRef.current ? cameraTrackRef.current.enabled && cameraTrackRef.current.readyState === "live" : false;
-      const currentMicState = audioTrackRef.current ? audioTrackRef.current.enabled : false;
-      socket.emit("media-state", { cameraEnabled: currentCameraState, micEnabled: currentMicState });
-      
-      if (shouldInitiate(socket.id, user.sid)) void callPeer(user.sid); 
+    const onParticipantList = ({ participants: next }: { participants: RoomParticipant[] }) => updateParticipants(next);
+    const onUserJoined = ({ user }: { user: RoomParticipant }) => { if (shouldInitiate(socket.id, user.sid)) void callPeer(user.sid); };
+    const onMediaState = ({ sid, cameraEnabled: nextCameraEnabled, micEnabled: nextMicEnabled, screenSharing: nextScreenSharing }: { sid: string; cameraEnabled?: boolean; micEnabled?: boolean; screenSharing?: boolean }) => {
+      updateParticipants(participantsRef.current.map((participant) => participant.sid === sid ? {
+        ...participant,
+        camera_enabled: nextCameraEnabled ?? participant.camera_enabled,
+        mic_enabled: nextMicEnabled ?? participant.mic_enabled,
+        screen_sharing: nextScreenSharing ?? participant.screen_sharing,
+      } : participant));
     };
     const onOffer = async ({ from, offer }: { from: string; offer: RTCSessionDescriptionInit }) => {
       const pc = createPeer(from);
@@ -414,31 +342,13 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
         iceCandidateQueues.current.set(from, queue);
       }
     };
-    const onMediaState = ({ sid, cameraEnabled, micEnabled }: { sid: string; cameraEnabled?: boolean; micEnabled?: boolean }) => {
-      updateParticipants(participantsRef.current.map((p) => {
-        if (p.sid === sid) {
-          return {
-            ...p,
-            ...(cameraEnabled !== undefined ? { cameraEnabled } : {}),
-            ...(micEnabled !== undefined ? { micEnabled } : {}),
-          };
-        }
-        return p;
-      }));
-    };
-    const onReceiveReaction = (reaction: { sid: string; emoji: string }) => {
-      const newReaction: Reaction = { id: Math.random().toString(36).substr(2, 9), sid: reaction.sid, emoji: reaction.emoji, timestamp: Date.now() };
-      setReactions((prev) => [...prev, newReaction]);
-      setTimeout(() => {
-        setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
-      }, 3000);
-    };
     const onLeft = ({ sid }: { sid: string }) => {
       const timer = disconnectTimers.current.get(sid);
       if (timer) window.clearTimeout(timer);
       disconnectTimers.current.delete(sid);
       restartAttempts.current.delete(sid);
       iceCandidateQueues.current.delete(sid);
+      videoSenders.current.delete(sid);
       peers.current.get(sid)?.close();
       peers.current.delete(sid);
       setRemoteStreams((current) => current.filter((item) => item.sid !== sid));
@@ -451,7 +361,6 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
     socket.on("answer", onAnswer);
     socket.on("ice-candidate", onIce);
     socket.on("media-state", onMediaState);
-    socket.on("receive-reaction", onReceiveReaction);
     socket.on("user-left", onLeft);
     return () => {
       socket.off("room-joined", onRoomJoined);
@@ -461,7 +370,6 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
       socket.off("answer", onAnswer);
       socket.off("ice-candidate", onIce);
       socket.off("media-state", onMediaState);
-      socket.off("receive-reaction", onReceiveReaction);
       socket.off("user-left", onLeft);
     };
   }, [callPeer, createPeer, socket, updateParticipants]);
@@ -469,298 +377,216 @@ export function useWebRTC(socket: Socket | null, meetingId: string, enabled: boo
   const selectVideoDevice = useCallback(async (deviceId: string) => {
     if (!deviceId || screenSharing) return;
     try {
-      let cameraStream: MediaStream;
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            deviceId: { exact: deviceId }, 
-            width: { ideal: 3840 }, 
-            height: { ideal: 2160 },
-            frameRate: { ideal: 60 },
-            // @ts-ignore
-            resizeMode: "crop-and-scale"
-          },
-          audio: false,
-        });
-      } catch {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-      }
+      const cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
       const nextTrack = cameraStream.getVideoTracks()[0];
       const previousTrack = cameraTrackRef.current;
       const audioTracks = localStreamRef.current?.getAudioTracks() || [];
       const nextStream = new MediaStream([nextTrack, ...audioTracks]);
 
-      peers.current.forEach((peer) => {
-        const sender = peer.getSenders().find((item) => item.track?.kind === "video");
-        if (sender) void sender.replaceTrack(nextTrack);
-        else peer.addTrack(nextTrack, nextStream);
+      peers.current.forEach((peer, sid) => {
+        replaceVideoTrackForPeer(sid, peer, nextTrack, nextStream);
       });
 
       cameraTrackRef.current = nextTrack;
       localStreamRef.current = nextStream;
       setLocalStream(nextStream);
       setSelectedVideoDeviceId(deviceId);
-      setCameraEnabled(true);
+      updateCameraEnabled(true);
+      emitMediaState({ cameraEnabled: true });
       setMediaError(null);
-      window.localStorage.setItem(CAMERA_STORAGE_KEY, deviceId);
+      setStoredValue(CAMERA_STORAGE_KEY, deviceId);
       if (previousTrack && previousTrack !== nextTrack) previousTrack.stop();
     } catch {
       setMediaError("The selected camera could not be opened. Close other camera apps and try again.");
     }
-  }, [screenSharing]);
-
-  const selectAudioInputDevice = useCallback(async (deviceId: string) => {
-    if (!deviceId) return;
-    try {
-      const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { 
-          deviceId: { exact: deviceId },
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,
-          channelCount: 1,
-        },
-        video: false,
-      });
-      const nextTrack = micStream.getAudioTracks()[0];
-      const previousTrack = audioTrackRef.current;
-
-      if (nextTrack) {
-        peers.current.forEach((peer) => {
-          const sender = peer.getSenders().find((item) => item.track?.kind === "audio");
-          if (sender) void sender.replaceTrack(nextTrack);
-        });
-
-        if (localStreamRef.current) {
-          if (previousTrack) localStreamRef.current.removeTrack(previousTrack);
-          localStreamRef.current.addTrack(nextTrack);
-        }
-
-        audioTrackRef.current = nextTrack;
-        setSelectedAudioInputId(deviceId);
-        window.localStorage.setItem(MIC_STORAGE_KEY, deviceId);
-        
-        // Match the mute state
-        nextTrack.enabled = micEnabled;
-
-        if (previousTrack && previousTrack !== nextTrack) previousTrack.stop();
-      }
-    } catch {
-      setMediaError("Could not connect to the selected microphone.");
-    }
-  }, [micEnabled]);
-
-  const selectAudioOutputDevice = useCallback((deviceId: string) => {
-    setSelectedAudioOutputId(deviceId);
-    window.localStorage.setItem(SPEAKER_STORAGE_KEY, deviceId);
-  }, []);
-
-  const clearNewDeviceToast = useCallback(() => setNewDeviceConnected(null), []);
-
+  }, [emitMediaState, replaceVideoTrackForPeer, screenSharing, updateCameraEnabled]);
   const toggleMic = () => {
     if (!localStreamRef.current) { void requestMedia(); return; }
-    localStreamRef.current?.getAudioTracks().forEach((track) => { 
-      track.enabled = !track.enabled; 
-      setMicEnabled(track.enabled); 
-      socket?.emit("media-state", { micEnabled: track.enabled });
+    const nextEnabled = !micEnabledRef.current;
+    localStreamRef.current.getAudioTracks().forEach((track) => {
+      track.enabled = nextEnabled;
     });
+    updateMicEnabled(nextEnabled);
+    emitMediaState({ micEnabled: nextEnabled });
+  };
+
+  const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMediaError("Camera requires a secure HTTPS connection.");
+      updateCameraEnabled(false);
+      emitMediaState({ cameraEnabled: false });
+      return;
+    }
+
+    try {
+      const video = selectedVideoDeviceId
+        ? { deviceId: { exact: selectedVideoDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        : await preferredCameraConstraints();
+      const cameraStream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      const nextTrack = cameraStream.getVideoTracks()[0];
+      if (!nextTrack) return;
+
+      const previousTrack = cameraTrackRef.current;
+      cameraTrackRef.current = nextTrack;
+      const nextDeviceId = nextTrack.getSettings().deviceId || selectedVideoDeviceId;
+      setSelectedVideoDeviceId(nextDeviceId);
+      if (nextDeviceId) setStoredValue(CAMERA_STORAGE_KEY, nextDeviceId);
+
+      if (!screenSharing) {
+        const audioTracks = localStreamRef.current?.getAudioTracks() || [];
+        const nextStream = new MediaStream([nextTrack, ...audioTracks]);
+        localStreamRef.current = nextStream;
+        setLocalStream(nextStream);
+        peers.current.forEach((peer, sid) => replaceVideoTrackForPeer(sid, peer, nextTrack, nextStream));
+      }
+
+      updateCameraEnabled(true);
+      emitMediaState({ cameraEnabled: true });
+      setMediaError(null);
+      if (previousTrack && previousTrack !== nextTrack) previousTrack.stop();
+    } catch (error) {
+      let message = "The camera could not be opened. Close other camera apps and try again.";
+      if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
+        message = "Camera access is blocked. Allow camera permission for this site, then try again.";
+      }
+      setMediaError(message);
+      updateCameraEnabled(false);
+      emitMediaState({ cameraEnabled: false });
+    }
+  };
+
+  const stopCamera = () => {
+    const stream = localStreamRef.current;
+    const track = cameraTrackRef.current || (!screenSharing ? stream?.getVideoTracks()[0] : null);
+
+    if (!screenSharing) {
+      peers.current.forEach((peer, sid) => replaceVideoTrackForPeer(sid, peer, null));
+      if (stream && track) stream.removeTrack(track);
+      const nextStream = new MediaStream(stream?.getAudioTracks() || []);
+      localStreamRef.current = nextStream;
+      setLocalStream(nextStream);
+    }
+
+    track?.stop();
+    cameraTrackRef.current = null;
+    updateCameraEnabled(false);
+    emitMediaState({ cameraEnabled: false });
   };
 
   const toggleCamera = async () => {
-    if (!localStreamRef.current) { void requestMedia(); return; }
+    if (cameraEnabledRef.current) {
+      stopCamera();
+      return;
+    }
 
-    const currentTrack = localStreamRef.current.getVideoTracks()[0];
+    await startCamera();
+  };
 
-    if (cameraEnabled) {
-      if (currentTrack) currentTrack.stop();
-      setCameraEnabled(false);
-      socket?.emit("media-state", { cameraEnabled: false });
+  const restoreCameraAfterScreenShare = useCallback((stopScreenTrack = true) => {
+    const screenTrack = screenTrackRef.current;
+    if (screenTrack && stopScreenTrack && screenTrack.readyState === "live") {
+      screenTrack.onended = null;
+      screenTrack.stop();
+    }
+    screenTrackRef.current = null;
 
-      // ULTIMATE FIX: Also replace the WebRTC track with null so it stops sending the frozen frame entirely.
-      const videoTransceivers = Array.from(peers.current.values()).flatMap((p) => p.getTransceivers()).filter(t => t.receiver.track.kind === "video" || t.sender.track?.kind === "video");
-      for (const t of videoTransceivers) {
-        if (t.sender) await t.sender.replaceTrack(null);
-      }
+    const audioTracks = localStreamRef.current?.getAudioTracks() || [];
+    const cameraTrack = cameraTrackRef.current;
+
+    if (!cameraTrack || cameraTrack.readyState !== "live" || !cameraEnabledRef.current) {
+      peers.current.forEach((peer, sid) => replaceVideoTrackForPeer(sid, peer, null));
+      const audioOnlyStream = new MediaStream(audioTracks);
+      localStreamRef.current = audioOnlyStream;
+      setLocalStream(audioOnlyStream);
+      setScreenSharing(false);
+      emitMediaState({ screenSharing: false, cameraEnabled: false });
+      return;
+    }
+
+    const restoredStream = new MediaStream([cameraTrack, ...audioTracks]);
+    peers.current.forEach((peer, sid) => {
+      replaceVideoTrackForPeer(sid, peer, cameraTrack, restoredStream);
+    });
+    localStreamRef.current = restoredStream;
+    setLocalStream(restoredStream);
+    setScreenSharing(false);
+    emitMediaState({ screenSharing: false, cameraEnabled: true });
+  }, [emitMediaState, replaceVideoTrackForPeer]);
+
+  const shareScreen = async () => {
+    if (screenTrackRef.current || screenSharing) {
+      restoreCameraAfterScreenShare();
       return;
     }
 
     try {
-      const videoConstraints = await preferredCameraConstraints();
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-      } catch {
-        const fallbackVideo = (typeof videoConstraints === 'object' && videoConstraints !== null && 'deviceId' in videoConstraints) 
-            ? { deviceId: videoConstraints.deviceId, width: { ideal: 1280 }, height: { ideal: 720 } }
-            : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
-        stream = await navigator.mediaDevices.getUserMedia({ video: fallbackVideo, audio: false });
-      }
-      const newTrack = stream.getVideoTracks()[0];
-      
-      const videoTransceivers = Array.from(peers.current.values()).flatMap((p) => p.getTransceivers()).filter(t => t.receiver.track.kind === "video" || t.sender.track?.kind === "video" || !t.sender.track);
-      
-      for (const t of videoTransceivers) {
-        if (newTrack && t.sender) await t.sender.replaceTrack(newTrack);
-      } 
-      const audioTracks = localStreamRef.current.getAudioTracks();
-      const nextStream = new MediaStream([newTrack, ...audioTracks]);
-
-      localStreamRef.current = nextStream;
-      cameraTrackRef.current = newTrack;
-      setLocalStream(nextStream);
-      setCameraEnabled(true);
-      setMediaError(null);
-      socket?.emit("media-state", { cameraEnabled: true });
-
-      peers.current.forEach((peer) => {
-        const sender = peer.getSenders().find((s) => s.track?.kind === "video");
-        if (sender) void sender.replaceTrack(newTrack);
-        else peer.addTrack(newTrack, nextStream);
-      });
-    } catch {
-      setMediaError("Could not restart camera. Check permissions.");
-    }
-  };
-
-  const shareScreen = async () => {
-  if (!localStreamRef.current) return;
-
-  if (screenSharing) {
-    const track = localStreamRef.current.getVideoTracks()[0];
-    if (track) {
-      track.stop();
-      if (typeof track.onended === 'function') {
-        track.onended(new Event('ended'));
-      } else {
-        track.dispatchEvent(new Event('ended'));
-      }
-    }
-    return;
-  }
-
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      alert("Screen sharing is not supported in this browser (or insecure context).");
-      return;
-    }
-
-    const displayStream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: false,
-    });
-
-    const screenTrack = displayStream.getVideoTracks()[0];
-    const cameraTrack = cameraTrackRef.current || localStreamRef.current.getVideoTracks()[0];
-
-    // Replace video track for every peer using transceivers (handles camera-off state)
-    const videoTransceivers = Array.from(peers.current.values())
-      .flatMap((p) => p.getTransceivers())
-      .filter((t) => t.receiver.track.kind === "video" || t.sender.track?.kind === "video" || !t.sender.track);
-
-    for (const t of videoTransceivers) {
-      if (t.sender) await t.sender.replaceTrack(screenTrack);
-    }
-
-    // Update local preview
-    const screenStreamWithAudio = new MediaStream([
-      screenTrack,
-      ...localStreamRef.current!.getAudioTracks(),
-    ]);
-
-    localStreamRef.current = screenStreamWithAudio;
-    setLocalStream(screenStreamWithAudio);
-    setScreenSharing(true);
-
-    screenTrack.onended = async () => {
-      const originalCameraTrack = cameraTrackRef.current || cameraTrack;
-      if (!originalCameraTrack || originalCameraTrack.readyState !== "live") {
-        setScreenSharing(false);
-        void requestMedia();
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        setMediaError("Screen sharing requires a supported browser and a secure HTTPS connection.");
         return;
       }
 
-      for (const t of videoTransceivers) {
-        if (t.sender) await t.sender.replaceTrack(originalCameraTrack);
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+
+      const screenTrack = displayStream.getVideoTracks()[0];
+      if (!screenTrack) {
+        setMediaError("No screen video track was selected.");
+        return;
       }
 
-      const restoredStream = new MediaStream([
-        originalCameraTrack,
-        ...localStreamRef.current!.getAudioTracks(),
+      const currentStream = localStreamRef.current;
+      const audioTracks = currentStream?.getAudioTracks() || [];
+      screenTrackRef.current = screenTrack;
+
+      const screenStreamWithAudio = new MediaStream([
+        screenTrack,
+        ...audioTracks,
       ]);
-      localStreamRef.current = restoredStream;
-      setLocalStream(restoredStream);
-      setScreenSharing(false);
-    };
 
-  } catch (err: any) {
-    console.error("Screen sharing failed:", err);
-    const errorStr = String(err.message || err.name || "");
-    if (!errorStr.includes("Invalid capture constraints") && !errorStr.includes("NotAllowedError") && !errorStr.includes("InvalidStateError") && !errorStr.includes("Permission denied")) {
-      alert(`Screen sharing failed: ${errorStr}`);
-    }
-  }
-};
+      peers.current.forEach((peer, sid) => {
+        replaceVideoTrackForPeer(sid, peer, screenTrack, screenStreamWithAudio);
+      });
 
-  const sendReaction = useCallback((emoji: string) => {
-    if (socket) {
-      socket.emit("send-reaction", { emoji });
-      const newReaction: Reaction = { id: Math.random().toString(36).substr(2, 9), sid: socket.id!, emoji, timestamp: Date.now() };
-      setReactions((prev) => [...prev, newReaction]);
-      setTimeout(() => {
-        setReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
-      }, 3000);
+      localStreamRef.current = screenStreamWithAudio;
+      setLocalStream(screenStreamWithAudio);
+      setScreenSharing(true);
+      emitMediaState({ screenSharing: true });
+      setMediaError(null);
+
+      screenTrack.onended = () => restoreCameraAfterScreenShare(false);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "NotAllowedError") return;
+      setMediaError("PyMeet could not start screen sharing. Check browser permissions and try again.");
     }
-  }, [socket]);
+  };
 
   const leave = useCallback((endForEveryone = false) => {
     socket?.emit(endForEveryone ? "end-meeting" : "user-left", { meetingId });
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenTrackRef.current?.stop();
+    screenTrackRef.current = null;
     cameraTrackRef.current?.stop();
     cameraTrackRef.current = null;
     peers.current.forEach((peer) => peer.close());
     peers.current.clear();
+    videoSenders.current.clear();
     setLocalStream(null);
     setRemoteStreams([]);
   }, [meetingId, socket]);
 
-  // Auto-resume media if revoked by OS (e.g. backgrounding on iOS/Android)
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === "visible") {
-        const isCameraDead = cameraEnabled && (!cameraTrackRef.current || cameraTrackRef.current.readyState === "ended");
-        const isMicDead = micEnabled && (!audioTrackRef.current || audioTrackRef.current.readyState === "ended");
-
-        if (isCameraDead || isMicDead) {
-          try {
-            // First turn them off in state so the UI reflects the restart
-            if (isCameraDead) setCameraEnabled(false);
-            if (isMicDead) setMicEnabled(false);
-            
-            // Re-request the media entirely
-            await requestMedia();
-            
-            // We don't need to manually replace tracks here because requestMedia() 
-            // already handles replacing the tracks in the peer connections automatically!
-          } catch (err) {
-            console.warn("Could not auto-resume media", err);
-          }
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [cameraEnabled, micEnabled, requestMedia]);
-
-  return { 
-    localStream, remoteStreams, participants, reactions, micEnabled, cameraEnabled, screenSharing, mediaError, 
-    videoDevices, audioInputDevices, audioOutputDevices, 
-    selectedVideoDeviceId, selectedAudioInputId, selectedAudioOutputId, newDeviceConnected,
-    requestMedia, selectVideoDevice, selectAudioInputDevice, selectAudioOutputDevice, clearNewDeviceToast,
-    toggleMic, toggleCamera, shareScreen, sendReaction, leave 
-  };
+  return { localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, videoDevices, selectedVideoDeviceId, requestMedia, selectVideoDevice, toggleMic, toggleCamera, shareScreen, leave };
 }
+
+
+
+
+
+
+
+
+

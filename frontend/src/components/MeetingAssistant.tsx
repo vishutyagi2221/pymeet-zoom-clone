@@ -2,7 +2,7 @@
 import { Clock3, MessageSquare, MonitorUp, Sparkles, UserMinus, UserPlus, Wifi, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
-import type { RoomParticipant } from "../types";
+import type { ReactionEvent, RoomParticipant } from "../types";
 
 type NoticeKind = "info" | "success" | "warning" | "danger";
 
@@ -11,6 +11,10 @@ interface Notice {
   kind: NoticeKind;
   title: string;
   message: string;
+}
+
+interface ReactionBurst extends ReactionEvent {
+  offset: number;
 }
 
 const kindStyles: Record<NoticeKind, string> = {
@@ -41,6 +45,7 @@ export function MeetingAssistant({
   screenSharing: boolean;
 }) {
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [reactions, setReactions] = useState<ReactionBurst[]>([]);
   const participantsRef = useRef<Map<string, RoomParticipant>>(new Map());
   const waitingRef = useRef<Map<string, RoomParticipant>>(new Map());
   const initializedWaiting = useRef(false);
@@ -75,6 +80,13 @@ export function MeetingAssistant({
     const onChatMessage = ({ user }: { user: RoomParticipant }) => {
       notify("info", "New chat message", `${user.name} sent a message.`);
     };
+    const onReaction = (reaction: Omit<ReactionEvent, "id">) => {
+      const id = crypto.randomUUID();
+      setReactions((current) => [...current.slice(-9), { ...reaction, id, sentAt: reaction.sentAt || new Date().toISOString(), offset: Math.random() * 140 - 70 }]);
+      window.setTimeout(() => {
+        setReactions((current) => current.filter((item) => item.id !== id));
+      }, 2200);
+    };
     const onConnect = () => notify("success", "Connection restored", "You are connected to the meeting again.");
     const onDisconnect = () => notify("danger", "Connection lost", "PyMeet is trying to reconnect automatically.");
     const onConnectError = () => notify("warning", "Connection issue", "The meeting server is temporarily unavailable.");
@@ -82,6 +94,7 @@ export function MeetingAssistant({
     socket.on("user-joined", onUserJoined);
     socket.on("user-left", onUserLeft);
     socket.on("chat-message", onChatMessage);
+    socket.on("reaction", onReaction);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
@@ -90,6 +103,7 @@ export function MeetingAssistant({
       socket.off("user-joined", onUserJoined);
       socket.off("user-left", onUserLeft);
       socket.off("chat-message", onChatMessage);
+      socket.off("reaction", onReaction);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
@@ -123,28 +137,47 @@ export function MeetingAssistant({
   }, [notify, screenSharing]);
 
   return (
-    <div aria-live="polite" aria-label="PyMeet Assistant notifications" className="pointer-events-none fixed right-4 top-20 z-50 flex w-[min(92vw,360px)] flex-col gap-2">
-      <AnimatePresence initial={false}>
-        {notices.map((notice) => (
-          <motion.div
-            key={notice.id}
-            initial={{ opacity: 0, x: 28, scale: 0.98 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.98 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-lg border p-3 shadow-soft backdrop-blur-xl ${kindStyles[notice.kind]}`}
-          >
-            <div className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 ${iconStyles[notice.kind]}`}>
-              {notice.title.includes("joined") ? <UserPlus size={17} /> : notice.title.includes("left") ? <UserMinus size={17} /> : notice.title.includes("Waiting") ? <Clock3 size={17} /> : notice.title.includes("chat") ? <MessageSquare size={17} /> : notice.title.includes("Screen") ? <MonitorUp size={17} /> : notice.kind === "danger" ? <WifiOff size={17} /> : notice.title.includes("Connection") ? <Wifi size={17} /> : <Sparkles size={17} />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1 text-xs font-semibold uppercase text-cyan-300"><Sparkles size={12} /> PyMeet Assistant</div>
-              <p className="mt-1 text-sm font-semibold text-white">{notice.title}</p>
-              <p className="mt-0.5 text-xs leading-5 text-slate-300">{notice.message}</p>
-            </div>
-            <button type="button" onClick={() => dismiss(notice.id)} className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Dismiss notification"><X size={15} /></button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
+    <>
+      <div aria-live="polite" aria-label="Meeting reactions" className="pointer-events-none fixed inset-x-0 bottom-28 z-40 flex justify-center">
+        <AnimatePresence initial={false}>
+          {reactions.map((reaction) => (
+            <motion.div
+              key={reaction.id}
+              initial={{ opacity: 0, y: 36, scale: 0.8, x: reaction.offset }}
+              animate={{ opacity: [0, 1, 1, 0], y: -120, scale: [0.8, 1.25, 1.1], x: reaction.offset }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 2.1, ease: "easeOut" }}
+              className="absolute rounded-full bg-slate-950/70 px-4 py-2 text-4xl shadow-soft backdrop-blur-xl"
+              title={`${reaction.user.name} reacted`}
+            >
+              {reaction.emoji}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      <div aria-live="polite" aria-label="PyMeet Assistant notifications" className="pointer-events-none fixed right-4 top-20 z-50 flex w-[min(92vw,360px)] flex-col gap-2">
+        <AnimatePresence initial={false}>
+          {notices.map((notice) => (
+            <motion.div
+              key={notice.id}
+              initial={{ opacity: 0, x: 28, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 24, scale: 0.98 }}
+              className={`pointer-events-auto flex items-start gap-3 rounded-lg border p-3 shadow-soft backdrop-blur-xl ${kindStyles[notice.kind]}`}
+            >
+              <div className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 ${iconStyles[notice.kind]}`}>
+                {notice.title.includes("joined") ? <UserPlus size={17} /> : notice.title.includes("left") ? <UserMinus size={17} /> : notice.title.includes("Waiting") ? <Clock3 size={17} /> : notice.title.includes("chat") ? <MessageSquare size={17} /> : notice.title.includes("Screen") ? <MonitorUp size={17} /> : notice.kind === "danger" ? <WifiOff size={17} /> : notice.title.includes("Connection") ? <Wifi size={17} /> : <Sparkles size={17} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 text-xs font-semibold uppercase text-cyan-300"><Sparkles size={12} /> PyMeet Assistant</div>
+                <p className="mt-1 text-sm font-semibold text-white">{notice.title}</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-300">{notice.message}</p>
+              </div>
+              <button type="button" onClick={() => dismiss(notice.id)} className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Dismiss notification"><X size={15} /></button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </>
   );
 }

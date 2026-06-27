@@ -25,6 +25,7 @@ def create_meeting(db: Session, host: User, payload: MeetingCreate) -> Meeting:
     db.add(meeting)
     db.commit()
     db.refresh(meeting)
+    add_participant(db, meeting, host)
     return get_meeting(db, code)
 
 

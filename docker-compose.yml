@@ -20,7 +20,7 @@
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://pymeet:pymeet_password@postgres:5432/pymeet}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-replace-with-a-long-random-secret}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
       ENVIRONMENT: production
     ports:
       - "8000:8000"
@@ -32,12 +32,12 @@
     build:
       context: ./frontend
       args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://localhost:8000}
+        VITE_API_TIMEOUT_MS: ${VITE_API_TIMEOUT_MS:-45000}
         VITE_TURN_URL: ${VITE_TURN_URL:-}
         VITE_TURN_USERNAME: ${VITE_TURN_USERNAME:-}
         VITE_TURN_CREDENTIAL: ${VITE_TURN_CREDENTIAL:-}
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
-      VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://localhost:8000}
     ports:
       - "5173:5173"
     depends_on:

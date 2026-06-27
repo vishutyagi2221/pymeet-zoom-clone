@@ -1,6 +1,6 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { FormEvent, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, MessageSquare, Shield, Sparkles, Video } from "lucide-react";
 import { Button } from "../components/Button";
@@ -10,7 +10,6 @@ import { useAuth } from "../context/AuthContext";
 export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,8 +19,7 @@ export function Login() {
     setBusy(true); setError("");
     try {
       await login(email, password);
-      const from = location.state?.from?.pathname || "/";
-      navigate(from, { replace: true });
+      navigate("/");
     } catch (requestError) {
       if (!axios.isAxiosError(requestError) || !requestError.response) {
         setError("Cannot connect to PyMeet. Open the HTTPS link and check your network.");
