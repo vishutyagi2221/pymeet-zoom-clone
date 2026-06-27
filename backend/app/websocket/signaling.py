@@ -5,16 +5,19 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 import socketio
+from fastapi import HTTPException
 
 from app.config import settings
 from app.database import SessionLocal
 from app.models.user import User
-from app.services.meeting_service import end_meeting, end_participation, get_meeting
+from app.services.meeting_service import add_participant, end_meeting, end_participation, get_meeting
 from app.utils.security import decode_token
+
+ALLOWED_ORIGINS = settings.frontend_origins
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",
+    cors_allowed_origins=ALLOWED_ORIGINS,
     logger=False,
     engineio_logger=False,
 )
@@ -29,6 +32,9 @@ class RoomUser:
     avatar_color: str
     is_host: bool
     is_waiting: bool = False
+    camera_enabled: bool = True
+    mic_enabled: bool = True
+    screen_sharing: bool = False
 
 
 rooms: dict[str, dict[str, RoomUser]] = {}
@@ -58,6 +64,21 @@ def _sync_get_meeting(meeting_id: str):
     db = SessionLocal()
     try:
         return get_meeting(db, meeting_id)
+    except HTTPException:
+        return None
+    finally:
+        db.close()
+
+
+def _sync_add_participant(meeting_id: str, user_id: int) -> None:
+    db = SessionLocal()
+    try:
+        meeting = get_meeting(db, meeting_id)
+        user = db.get(User, user_id)
+        if meeting and user:
+            add_participant(db, meeting, user)
+    except HTTPException:
+        return
     finally:
         db.close()
 
@@ -92,12 +113,20 @@ async def join_room(sid: str, data: dict[str, Any]):
     meeting_id = str(data.get("meetingId", "")).upper()
     meeting = await asyncio.to_thread(_sync_get_meeting, meeting_id)
 
-    if not meeting.is_active:
+    if not meeting or not meeting.is_active:
         await sio.emit("meeting-ended", {"meetingId": meeting_id, "reason": "host-ended"}, to=sid)
         return
 
     user = sid_to_user[sid]
     user.is_host = meeting.host_id == user.id
+    media = data.get("media") or {}
+    if isinstance(media, dict):
+        if "cameraEnabled" in media:
+            user.camera_enabled = bool(media["cameraEnabled"])
+        if "micEnabled" in media:
+            user.mic_enabled = bool(media["micEnabled"])
+        if "screenSharing" in media:
+            user.screen_sharing = bool(media["screenSharing"])
     room = rooms.setdefault(meeting_id, {})
     waiting = waiting_rooms.setdefault(meeting_id, {})
 
@@ -110,6 +139,7 @@ async def join_room(sid: str, data: dict[str, Any]):
         return
 
     user.is_waiting = False
+    await asyncio.to_thread(_sync_add_participant, meeting_id, user.id)
     room[sid] = user
     sid_to_room[sid] = meeting_id
     await sio.enter_room(sid, meeting_id)
@@ -129,6 +159,7 @@ async def admit_participant(sid: str, data: dict[str, Any]):
     if not user:
         return
     user.is_waiting = False
+    await asyncio.to_thread(_sync_add_participant, meeting_id, user.id)
     rooms.setdefault(meeting_id, {})[target_sid] = user
     sid_to_room[target_sid] = meeting_id
     await sio.leave_room(target_sid, f"waiting:{meeting_id}")
@@ -170,12 +201,77 @@ async def ice_candidate(sid: str, data: dict[str, Any]):
     await sio.emit("ice-candidate", {**data, "from": sid}, to=target)
 
 
+@sio.on("media-state")
+async def media_state(sid: str, data: dict[str, Any]):
+    meeting_id = sid_to_room.get(sid)
+    user = sid_to_user.get(sid)
+    if not meeting_id or not user or not isinstance(data, dict):
+        return
+
+    if "cameraEnabled" in data:
+        user.camera_enabled = bool(data["cameraEnabled"])
+    if "micEnabled" in data:
+        user.mic_enabled = bool(data["micEnabled"])
+    if "screenSharing" in data:
+        user.screen_sharing = bool(data["screenSharing"])
+
+    await sio.emit(
+        "media-state",
+        {
+            "sid": sid,
+            "cameraEnabled": user.camera_enabled,
+            "micEnabled": user.mic_enabled,
+            "screenSharing": user.screen_sharing,
+        },
+        room=meeting_id,
+    )
+
+
 @sio.on("chat-message")
 async def chat_message(sid: str, data: dict[str, Any]):
     meeting_id = sid_to_room.get(sid)
     user = sid_to_user.get(sid)
-    if meeting_id and user:
-        await sio.emit("chat-message", {"message": data.get("message", ""), "user": asdict(user), "sentAt": data.get("sentAt")}, room=meeting_id, skip_sid=sid)
+    message = data.get("message")
+    if not meeting_id or not user or not isinstance(message, str):
+        return
+
+    message = message.strip()
+    if not message:
+        return
+
+    await sio.emit(
+        "chat-message",
+        {
+            "message": message[:1000],
+            "user": asdict(user),
+            "sentAt": data.get("sentAt"),
+        },
+        room=meeting_id,
+    )
+
+
+@sio.on("reaction")
+async def reaction(sid: str, data: dict[str, Any]):
+    meeting_id = sid_to_room.get(sid)
+    user = sid_to_user.get(sid)
+    emoji = data.get("emoji")
+    if not meeting_id or not user or not isinstance(emoji, str):
+        return
+
+    emoji = emoji.strip()
+    if not emoji or len(emoji) > 8:
+        return
+
+    await sio.emit(
+        "reaction",
+        {
+            "emoji": emoji,
+            "sid": sid,
+            "user": asdict(user),
+            "sentAt": data.get("sentAt"),
+        },
+        room=meeting_id,
+    )
 
 
 @sio.on("remove-participant")

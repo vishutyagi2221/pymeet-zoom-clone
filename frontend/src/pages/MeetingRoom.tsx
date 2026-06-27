@@ -26,6 +26,7 @@ export function MeetingRoom() {
   const [waiting, setWaiting] = useState(false);
   const [waitingParticipants, setWaitingParticipants] = useState<RoomParticipant[]>([]);
   const [exitMessage, setExitMessage] = useState("");
+  const [copied, setCopied] = useState(false);
   const { localStream, remoteStreams, participants, micEnabled, cameraEnabled, screenSharing, mediaError, videoDevices, selectedVideoDeviceId, requestMedia, selectVideoDevice, toggleMic, toggleCamera, shareScreen, leave } = useWebRTC(socket, meetingId, Boolean(meeting?.is_active && !exitMessage));
 
   useEffect(() => {
@@ -64,6 +65,27 @@ export function MeetingRoom() {
       : "You left the meeting and your camera and microphone are now disconnected."
     );
   };
+  const sendReaction = (emoji: string) => {
+    socket?.emit("reaction", { emoji, sentAt: new Date().toISOString() });
+  };
+  const copyMeetingId = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(meetingId);
+      } else {
+        const input = document.createElement("input");
+        input.value = meetingId;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   if (exitMessage) return (
     <MeetingExitScreen
@@ -83,7 +105,7 @@ export function MeetingRoom() {
         <div><h1 className="font-semibold">{meeting?.title || "PyMeet Meeting"}</h1><p className="text-xs text-slate-400">{meetingId}</p></div>
         <div className="flex items-center gap-2">
           <button onClick={() => setCameraSettingsOpen(true)} className="grid h-10 w-10 place-items-center rounded-lg border border-line bg-white/5 text-slate-200 hover:bg-white/10" title="Choose camera" aria-label="Choose camera"><Settings2 size={17} /></button>
-          <button onClick={() => navigator.clipboard.writeText(meetingId)} className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-slate-200 hover:bg-white/10"><Copy size={16} /> Copy ID</button>
+          <button onClick={() => void copyMeetingId()} className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-slate-200 hover:bg-white/10"><Copy size={16} /> {copied ? "Copied" : "Copy ID"}</button>
         </div>
       </header>
       <section className="fixed inset-0 flex h-full w-full items-center justify-center p-4"><VideoGrid localStream={localStream} localUser={localParticipant} remoteStreams={remoteStreams} cameraEnabled={cameraEnabled} screenSharing={screenSharing} /></section>
@@ -95,7 +117,7 @@ export function MeetingRoom() {
         </div>
       )}
       <MeetingAssistant socket={socket} participants={participants} waitingParticipants={waitingParticipants} isHost={localParticipant?.is_host ?? false} screenSharing={screenSharing} />
-      <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onLeave={exit} />
+      <MeetingControls isHost={localParticipant?.is_host ?? false} micEnabled={micEnabled} cameraEnabled={cameraEnabled} screenSharing={screenSharing} onToggleMic={toggleMic} onToggleCamera={toggleCamera} onShareScreen={shareScreen} onSendReaction={sendReaction} onToggleChat={() => setChatOpen((v) => !v)} onToggleParticipants={() => setParticipantsOpen((v) => !v)} onLeave={exit} />
       <Modal open={cameraSettingsOpen} title="Choose camera" onClose={() => setCameraSettingsOpen(false)}>
         <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor="camera-device">Camera</label>
         <select id="camera-device" value={selectedVideoDeviceId} onChange={(event) => void selectVideoDevice(event.target.value)} disabled={screenSharing} className="w-full rounded-lg border border-line bg-slate-900 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400 disabled:opacity-50">
@@ -104,7 +126,8 @@ export function MeetingRoom() {
           ))}
         </select>
         {screenSharing && <p className="mt-3 text-sm text-amber-300">Stop screen sharing before changing the camera.</p>}
-      </Modal>      <ChatPanel open={chatOpen} socket={socket} localUser={localParticipant} onClose={() => setChatOpen(false)} />
+      </Modal>
+      <ChatPanel open={chatOpen} socket={socket} onClose={() => setChatOpen(false)} />
       <ParticipantPanel open={participantsOpen} participants={participants} waitingParticipants={waitingParticipants} socket={socket} meetingId={meetingId} currentSid={socket?.id} onClose={() => setParticipantsOpen(false)} />
     </main>
   );

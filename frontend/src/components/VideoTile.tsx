@@ -21,12 +21,11 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
 
     if (stream) {
       video.srcObject = stream;
-      video.play().catch(() => {/* autoplay blocked — user interaction needed */});
+      video.play().catch(() => {});
     } else {
       video.srcObject = null;
     }
 
-    // Listen for track changes (e.g. replaceTrack doesn't change stream ref)
     const handleTrackChange = () => {
       if (video.srcObject !== stream) {
         video.srcObject = stream;
@@ -43,8 +42,9 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
     };
   }, [stream]);
 
-  const hasVideo = stream && stream.getVideoTracks().some((t) => t.enabled && t.readyState === "live");
-  const showVideo = cameraEnabled && (isLocal ? hasVideo : Boolean(stream));
+  const hasVideo = Boolean(stream?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"));
+  const showVideo = (screen || cameraEnabled) && hasVideo;
+  const objectFitClass = screen ? "object-contain bg-black" : "object-cover";
   const initials = (participant?.name || "Guest").split(" ").map((p) => p[0] || "").join("").slice(0, 2).toUpperCase();
 
   return (
@@ -56,18 +56,10 @@ export const VideoTile = memo(function VideoTile({ stream, participant, isLocal 
         autoPlay
         playsInline
         muted={muted}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${showVideo && !(isLocal && screen) ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${objectFitClass} ${showVideo ? "opacity-100" : "opacity-0"}`}
         style={isLocal && !screen ? { transform: "scaleX(-1)" } : undefined}
       />
-      {isLocal && screen ? (
-        <div className="z-10 flex flex-col items-center gap-3 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-full bg-slate-800/80 text-cyan-400 border border-slate-700 shadow-lg">
-            <MonitorUp size={28} />
-          </div>
-          <span className="text-sm font-medium text-slate-200">You are sharing your screen</span>
-          <span className="max-w-[200px] text-xs text-slate-400">Everyone can see your screen.</span>
-        </div>
-      ) : !showVideo && (
+      {!showVideo && (
         <div className="z-10 flex flex-col items-center gap-2">
           <div
             className="grid h-16 w-16 place-items-center rounded-full text-xl font-bold text-white sm:h-20 sm:w-20 sm:text-2xl"

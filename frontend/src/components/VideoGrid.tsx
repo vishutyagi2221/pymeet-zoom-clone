@@ -48,7 +48,9 @@ export const VideoGrid = memo(function VideoGrid({ localStream, localUser, remot
           key={item.sid}
           stream={item.stream}
           participant={item.participant}
+          cameraEnabled={(item.participant?.camera_enabled ?? true) || Boolean(item.participant?.screen_sharing)}
           active={false}
+          screen={item.participant?.screen_sharing ?? false}
         />
       ))}
     </div>

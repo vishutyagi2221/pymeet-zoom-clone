@@ -2,9 +2,9 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Send, X } from "lucide-react";
 import type { Socket } from "socket.io-client";
-import type { ChatMessage, RoomParticipant } from "../types";
+import type { ChatMessage } from "../types";
 
-export function ChatPanel({ open, socket, localUser, onClose }: { open: boolean; socket: Socket | null; localUser?: Partial<RoomParticipant>; onClose: () => void }) {
+export function ChatPanel({ open, socket, onClose }: { open: boolean; socket: Socket | null; onClose: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -21,15 +21,6 @@ export function ChatPanel({ open, socket, localUser, onClose }: { open: boolean;
     const sentAt = new Date().toISOString();
     const message = draft.trim();
     socket.emit("chat-message", { message, sentAt });
-    // Add own message locally since server skips sender
-    if (localUser) {
-      setMessages((current) => [...current, {
-        id: crypto.randomUUID(),
-        message,
-        user: localUser as RoomParticipant,
-        sentAt,
-      }]);
-    }
     setDraft("");
   };
   return (

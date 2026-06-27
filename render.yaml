@@ -6,7 +6,8 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 60
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -15,4 +16,4 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: FRONTEND_ORIGIN
-        value: https://pymeet.onrender.com
+        value: https://pymeet-zoom-clone.vercel.app,https://pymeet.onrender.com

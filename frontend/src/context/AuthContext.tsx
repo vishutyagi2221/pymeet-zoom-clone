@@ -1,6 +1,7 @@
-﻿import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "../services/api";
 import type { User } from "../types";
+import { getStoredValue, removeStoredValue, setStoredValue } from "../utils/storage";
 
 interface AuthContextValue {
   user: User | null;
@@ -11,11 +12,12 @@ interface AuthContextValue {
   logout: () => void;
 }
 
+const TOKEN_KEY = "pymeet_token";
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("pymeet_token"));
+  const [token, setToken] = useState<string | null>(() => getStoredValue(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,8 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     authApi.me().then(({ data }) => setUser(data)).catch(() => {
-      localStorage.removeItem("pymeet_token");
+      removeStoredValue(TOKEN_KEY);
       setToken(null);
+      setUser(null);
     }).finally(() => setLoading(false));
   }, [token]);
 
@@ -35,18 +38,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login: async (email, password) => {
       const { data } = await authApi.login({ email: email.trim().toLowerCase(), password });
-      localStorage.setItem("pymeet_token", data.access_token);
+      setStoredValue(TOKEN_KEY, data.access_token);
       setToken(data.access_token);
       setUser(data.user);
     },
     register: async (name, email, password) => {
       const { data } = await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password });
-      localStorage.setItem("pymeet_token", data.access_token);
+      setStoredValue(TOKEN_KEY, data.access_token);
       setToken(data.access_token);
       setUser(data.user);
     },
     logout: () => {
-      localStorage.removeItem("pymeet_token");
+      removeStoredValue(TOKEN_KEY);
       setToken(null);
       setUser(null);
     }
@@ -60,4 +63,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
-

@@ -9,6 +9,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CreateMeeting } from "./pages/CreateMeeting";
 import { JoinMeeting } from "./pages/JoinMeeting";
 import { MeetingRoom } from "./pages/MeetingRoom";
+import { registerServiceWorker } from "./pwa";
 import "./index.css";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -41,3 +42,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+registerServiceWorker();

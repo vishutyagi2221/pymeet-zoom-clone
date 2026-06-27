@@ -1,3 +1,4 @@
+import axios from "axios";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Video } from "lucide-react";
@@ -28,8 +29,12 @@ export function Register() {
     try {
       await register(form.name, form.email, form.password);
       navigate("/");
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
+    } catch (err) {
+      if (!axios.isAxiosError(err) || !err.response) {
+        setError("Cannot connect to PyMeet. Open the HTTPS link and check your network.");
+        return;
+      }
+      const detail = err.response.data?.detail;
       const message = typeof detail === "string"
         ? detail
         : Array.isArray(detail)

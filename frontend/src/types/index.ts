@@ -34,11 +34,22 @@ export interface RoomParticipant {
   avatar_color: string;
   is_host: boolean;
   is_waiting?: boolean;
+  camera_enabled?: boolean;
+  mic_enabled?: boolean;
+  screen_sharing?: boolean;
 }
 
 export interface ChatMessage {
   id: string;
   message: string;
+  user: RoomParticipant;
+  sentAt: string;
+}
+
+export interface ReactionEvent {
+  id: string;
+  emoji: string;
+  sid: string;
   user: RoomParticipant;
   sentAt: string;
 }

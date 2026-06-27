@@ -1,0 +1,33 @@
+{
+  "name": "PyMeet",
+  "short_name": "PyMeet",
+  "description": "Fast, secure video meetings with chat, reactions, waiting rooms, and screen sharing.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "background_color": "#050914",
+  "theme_color": "#0a0f1f",
+  "orientation": "any",
+  "categories": ["business", "productivity", "communication"],
+  "icons": [
+    {
+      "src": "/icons/pymeet-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/pymeet-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/pymeet-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

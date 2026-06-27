@@ -12,7 +12,8 @@ PyMeet is a production-style video conferencing application built with FastAPI, 
 - Meeting history and participant tracking
 - WebRTC multi-participant video and audio calling
 - Camera toggle, microphone toggle, screen sharing, and leave controls
-- Socket.IO real-time signaling for offers, answers, ICE candidates, chat, join, leave, and host removal events
+- Socket.IO real-time signaling for offers, answers, ICE candidates, chat, reactions, media state, join, leave, and host removal events
+- PWA install support with offline shell caching and mobile app metadata
 - Animated chat panel with timestamps and avatars
 - Participant sidebar with host badges, remove controls, and waiting-room admission
 - Premium dark SaaS UI using TailwindCSS, glass panels, soft shadows, Lucide icons, and Framer Motion
@@ -25,6 +26,8 @@ The backend exposes REST APIs under `/api` and a Socket.IO signaling endpoint at
 The frontend is a Vite React application. It stores the JWT in local storage, protects routes through `AuthContext`, calls REST APIs through `src/services/api.ts`, and uses `useWebRTC` plus Socket.IO to coordinate peer connections inside a meeting room.
 
 For participants joining from different networks, configure `VITE_TURN_URL`, `VITE_TURN_USERNAME`, and `VITE_TURN_CREDENTIAL` before building the frontend. STUN-only connections are suitable for local/LAN testing but cannot traverse every NAT or corporate firewall.
+
+If the React frontend is deployed separately on Vercel, set `VITE_API_URL` and `VITE_SOCKET_URL` to the Render backend URL before building, and include the Vercel domain in the backend `FRONTEND_ORIGIN` comma-separated list. The included Vercel rewrites route direct SPA links back to `index.html`.
 
 ## Folder Structure
 
@@ -90,6 +93,8 @@ npm run dev
 
 The frontend runs at `http://localhost:5173`.
 
+If you run the backend on a different local port, set `VITE_DEV_API_PROXY` in `frontend/.env`.
+
 ## Docker
 
 ```bash
@@ -127,11 +132,20 @@ Socket.IO events:
 - `offer`
 - `answer`
 - `ice-candidate`
+- `media-state`
 - `chat-message`
+- `reaction`
 - `user-left`
 - `waiting-list`
 - `admit-participant`
 - `remove-participant`
+
+## Deployment Notes
+
+- Render uses `render.yaml` and waits for GitHub checks to pass before auto-deploying.
+- The single Render Docker image serves the React app, REST API, Socket.IO, PWA manifest, and service worker from one HTTPS origin.
+- Camera, microphone, and screen sharing require HTTPS in production.
+- For reliable calls across different networks, configure TURN credentials before building/deploying.
 
 ## Testing
 

@@ -14,7 +14,7 @@ from app.websocket.signaling import sio
 
 Base.metadata.create_all(bind=engine)
 
-ALLOWED_ORIGINS = ["*"]
+ALLOWED_ORIGINS = settings.frontend_origins
 
 fastapi_app = FastAPI(title=settings.app_name, version="1.0.0")
 fastapi_app.add_middleware(
@@ -46,6 +46,9 @@ if index_file.exists():
     def serve_spa(full_path: str = ""):
         if full_path.startswith(("api/", "socket.io")):
             raise HTTPException(status_code=404)
+        target = (static_dir / full_path).resolve()
+        if target.is_file() and static_dir in target.parents:
+            return FileResponse(target)
         return FileResponse(index_file)
 
 

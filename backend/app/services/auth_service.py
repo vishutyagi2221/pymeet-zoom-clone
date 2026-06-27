@@ -2,7 +2,6 @@
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.models.user import User
