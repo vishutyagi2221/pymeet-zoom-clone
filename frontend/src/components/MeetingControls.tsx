@@ -45,7 +45,7 @@ export function MeetingControls({
       <div className="relative">
         <Button title="Send reaction" variant={reactionsOpen ? "primary" : "secondary"} className={item} onClick={() => setReactionsOpen((open) => !open)}><SmilePlus size={19} /></Button>
         {reactionsOpen && (
-          <div className="absolute bottom-14 left-1/2 grid -translate-x-1/2 grid-cols-3 gap-1 rounded-lg border border-line bg-slate-950/95 p-2 shadow-soft backdrop-blur-xl">
+          <div className="fixed bottom-20 left-1/2 z-50 grid -translate-x-1/2 grid-cols-3 gap-1 rounded-lg border border-line bg-slate-950/95 p-2 shadow-soft backdrop-blur-xl">
             {reactions.map((emoji) => (
               <button
                 key={emoji}
