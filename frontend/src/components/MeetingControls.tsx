@@ -30,7 +30,7 @@ export function MeetingControls({
   onLeave: () => void;
 }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
-  const item = "h-11 w-11 rounded-lg px-0";
+  const item = "h-11 w-11 shrink-0 rounded-lg px-0";
 
   const sendReaction = (emoji: string) => {
     onSendReaction(emoji);
@@ -38,14 +38,14 @@ export function MeetingControls({
   };
 
   return (
-    <div className="fixed bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-lg border border-line bg-slate-950/80 p-2 shadow-soft backdrop-blur-xl">
+    <div className="fixed bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 overflow-visible rounded-lg border border-line bg-slate-950/80 p-2 shadow-soft backdrop-blur-xl">
       <Button title={micEnabled ? "Mute microphone" : "Unmute microphone"} variant={micEnabled ? "secondary" : "danger"} className={item} onClick={onToggleMic}>{micEnabled ? <Mic size={19} /> : <MicOff size={19} />}</Button>
       <Button title={cameraEnabled ? "Turn camera off" : "Turn camera on"} variant={cameraEnabled ? "secondary" : "danger"} className={item} onClick={onToggleCamera}>{cameraEnabled ? <Video size={19} /> : <VideoOff size={19} />}</Button>
       <Button title={screenSharing ? "Stop sharing screen" : "Share screen"} variant={screenSharing ? "primary" : "secondary"} className={item} onClick={onShareScreen}><MonitorUp size={19} /></Button>
-      <div className="relative">
+      <div className="relative shrink-0">
         <Button title="Send reaction" variant={reactionsOpen ? "primary" : "secondary"} className={item} onClick={() => setReactionsOpen((open) => !open)}><SmilePlus size={19} /></Button>
         {reactionsOpen && (
-          <div className="fixed bottom-20 left-1/2 z-50 grid -translate-x-1/2 grid-cols-3 gap-1 rounded-lg border border-line bg-slate-950/95 p-2 shadow-soft backdrop-blur-xl">
+          <div className="absolute bottom-14 left-1/2 z-50 grid -translate-x-1/2 grid-cols-3 gap-1 rounded-lg border border-line bg-slate-950/95 p-2 shadow-soft backdrop-blur-xl">
             {reactions.map((emoji) => (
               <button
                 key={emoji}
@@ -62,7 +62,7 @@ export function MeetingControls({
       </div>
       <Button title="Chat" variant="secondary" className={item} onClick={onToggleChat}><MessageSquare size={19} /></Button>
       <Button title="Participants" variant="secondary" className={item} onClick={onToggleParticipants}><Users size={19} /></Button>
-      <Button title={isHost ? "End meeting for everyone" : "Leave meeting"} variant="danger" className="h-11 rounded-lg px-4" onClick={onLeave}><PhoneOff size={19} /> {isHost ? "End" : "Leave"}</Button>
+      <Button title={isHost ? "End meeting for everyone" : "Leave meeting"} variant="danger" className="h-11 shrink-0 rounded-lg px-4" onClick={onLeave}><PhoneOff size={19} /> {isHost ? "End" : "Leave"}</Button>
     </div>
   );
 }
